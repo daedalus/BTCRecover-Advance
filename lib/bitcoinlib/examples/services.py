@@ -18,7 +18,7 @@ print("Estimated bitcoin transaction fee:", srv.estimatefee(3))
 # Get Balance and UTXO's for given bitcoin testnet3 addresses
 address = 'mqR6Dndmez8WMpb1hBJbGbrQ2mpAU73hQC'
 srv = Service(network='testnet', min_providers=5)
-print("Balance of address %s: %s" % (address, srv.getbalance(address)))
+print(f"Balance of address {address}: {srv.getbalance(address)}")
 print("\nAll results as dict:")
 pprint(srv.results)
 print("\nUTXOs list:")

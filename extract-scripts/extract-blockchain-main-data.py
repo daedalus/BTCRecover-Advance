@@ -32,7 +32,7 @@ data = open(wallet_filename, "rb").read(64 * 2**20)  # up to 64M, typical size i
 # The number of pbkdf2 iterations, or 0 for v0.0 wallet files which don't specify this
 iter_count = 0
 
-class MayBeBlockchainV0(BaseException): pass;  # an exception which jumps to the end of the try block below
+class MayBeBlockchainV0(BaseException): pass
 try:
 
     # Most blockchain files (except v0.0 wallets) are JSON encoded; try to parse it as such
@@ -57,7 +57,7 @@ try:
         raise NotImplementedError("Unsupported Blockchain wallet version " + str(data["version"]))
     iter_count = data["pbkdf2_iterations"]
     if not isinstance(iter_count, int) or iter_count < 1:
-        raise ValueError("Invalid Blockchain pbkdf2_iterations " + str(iter_count))
+        raise ValueError(f"Invalid Blockchain pbkdf2_iterations {str(iter_count)}")
     data = data["payload"]
 
 except MayBeBlockchainV0:
@@ -68,7 +68,7 @@ except MayBeBlockchainV0:
 try:
     data = base64.b64decode(data)
 except TypeError as e:
-    raise ValueError("Can't base64-decode Blockchain wallet: "+str(e))
+    raise ValueError(f"Can't base64-decode Blockchain wallet: {str(e)}")
 if len(data) < 32:
     raise ValueError("Encrypted Blockchain data is too short")
 if len(data) % 16 != 0:
@@ -76,7 +76,7 @@ if len(data) % 16 != 0:
 
 print("Blockchain first 16 encrypted bytes, iv, and iter_count in base64:", file=sys.stderr)
 
-bytes = b"bk:" + struct.pack("< 16s 16s I", data[16:32], data[0:16], iter_count)
+bytes = b"bk:" + struct.pack("< 16s 16s I", data[16:32], data[:16], iter_count)
 crc_bytes = struct.pack("<I", zlib.crc32(bytes) & 0xffffffff)
 
 print(base64.b64encode(bytes + crc_bytes).decode())

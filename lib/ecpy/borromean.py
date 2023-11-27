@@ -41,10 +41,7 @@ def _point_to_bytes(point, compressed = True):
     """
     if compressed:
         b = point.x.to_bytes(32,'big')
-        if point.y & 1:
-            b = b"\x03"+b
-        else:
-            b = b"\x02"+b
+        b = b"\x03"+b if point.y & 1 else b"\x02"+b
     else:
         b = b"\x04"+point.x.to_bytes(32,'big')+point.y.to_bytes(32,'big')
     return b
@@ -59,14 +56,13 @@ def _borromean_hash(m,e,i,j, H):
     j: int       secret index
     """
     i = int(i).to_bytes(4,'big')
-    j = int(j).to_bytes(4,'big')              
+    j = int(j).to_bytes(4,'big')
     sha256 = H()
     sha256.update(e)
     sha256.update(m)
     sha256.update(i)
     sha256.update(j)
-    d = sha256.digest()
-    return d
+    return sha256.digest()
 
 class Borromean:
     """ Borromean Ring signer implementation according to:
@@ -217,11 +213,9 @@ if __name__ == "__main__":
     import sys
  
     def strsig(sigma):
-        print("e0: %s"%h(sigma[0]))
-        i=0
-        for s in sigma[1]:
+        print(f"e0: {h(sigma[0])}")
+        for i, s in enumerate(sigma[1]):
             print("s%d: %s"%(i,h(s)))
-            i += 1
     try:
 
         #

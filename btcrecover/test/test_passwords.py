@@ -98,7 +98,7 @@ class GeneratorTester(unittest.TestCase):
         assert isinstance(tokenlist, list)
         assert isinstance(expected_passwords, list)
         tokenlist_str = tstr("\n".join(tokenlist))
-        args = tstr("__funccall --listpass" + utf8_opt).split()
+        args = tstr(f"__funccall --listpass{utf8_opt}").split()
         if extra_cmd_line:
             args += tstr(extra_cmd_line).split(tstr(" "))
 
@@ -140,9 +140,13 @@ class GeneratorTester(unittest.TestCase):
         assert isinstance(tokenlist, list)
         with self.assertRaises(SystemExit) as cm:
             btcrpass.parse_arguments(
-                (tstr("--tokenlist __funccall --listpass "+extra_cmd_line+utf8_opt)).split(),
-                tokenlist = StringIO(tstr("\n".join(tokenlist))), disable_security_warning_param = True,
-                **extra_kwds)
+                tstr(
+                    f"--tokenlist __funccall --listpass {extra_cmd_line}{utf8_opt}"
+                ).split(),
+                tokenlist=StringIO(tstr("\n".join(tokenlist))),
+                disable_security_warning_param=True,
+                **extra_kwds,
+            )
         self.assertIn(expected_error, cm.exception.code)
 
 
@@ -178,8 +182,11 @@ class Test01Basics(GeneratorTester):
         self.assertRaises(StopIteration, tok_it.__next__)
 
     def test_only_yield_count(self):
-        btcrpass.parse_arguments(("--tokenlist __funccall --listpass"+utf8_opt).split(),
-                                 tokenlist = StringIO(tstr("one two three four five six")), disable_security_warning_param = True)
+        btcrpass.parse_arguments(
+            f"--tokenlist __funccall --listpass{utf8_opt}".split(),
+            tokenlist=StringIO(tstr("one two three four five six")),
+            disable_security_warning_param=True,
+        )
         tok_it = btcrpass.password_generator(2, only_yield_count=True)
         self.assertEqual(tok_it.__next__(), 2)
         self.assertIsNone(tok_it.send( (3, True) ))
@@ -188,8 +195,13 @@ class Test01Basics(GeneratorTester):
         self.assertEqual(tok_it.__next__(), ["six"])
         self.assertRaises(StopIteration, tok_it.__next__)
 
-        btcrpass.parse_arguments(("--passwordlist __funccall --listpass"+utf8_opt).split(),
-                                 passwordlist = StringIO(tstr("one two three four five six".replace(" ", "\n"))), disable_security_warning_param = True)
+        btcrpass.parse_arguments(
+            f"--passwordlist __funccall --listpass{utf8_opt}".split(),
+            passwordlist=StringIO(
+                tstr("one two three four five six".replace(" ", "\n"))
+            ),
+            disable_security_warning_param=True,
+        )
         pwl_it = btcrpass.password_generator(2, only_yield_count=True)
         self.assertEqual(pwl_it.__next__(), 2)
         self.assertIsNone(pwl_it.send( (3, True) ))
@@ -199,36 +211,54 @@ class Test01Basics(GeneratorTester):
         self.assertRaises(StopIteration, pwl_it.__next__)
 
     def test_only_yield_count_all(self):
-        btcrpass.parse_arguments(("--tokenlist __funccall --listpass"+utf8_opt).split(),
-                                 tokenlist = StringIO(tstr("one two three")), disable_security_warning_param = True)
+        btcrpass.parse_arguments(
+            f"--tokenlist __funccall --listpass{utf8_opt}".split(),
+            tokenlist=StringIO(tstr("one two three")),
+            disable_security_warning_param=True,
+        )
         tok_it = btcrpass.password_generator(4, only_yield_count=True)
         self.assertEqual(tok_it.__next__(), 3)
         self.assertRaises(StopIteration, tok_it.__next__)
 
-        btcrpass.parse_arguments(("--passwordlist __funccall --listpass"+utf8_opt).split(),
-                                 passwordlist = StringIO(tstr("one two three".replace(" ", "\n"))), disable_security_warning_param = True)
+        btcrpass.parse_arguments(
+            f"--passwordlist __funccall --listpass{utf8_opt}".split(),
+            passwordlist=StringIO(tstr("one two three".replace(" ", "\n"))),
+            disable_security_warning_param=True,
+        )
         pwl_it = btcrpass.password_generator(4, only_yield_count=True)
         self.assertEqual(pwl_it.__next__(), 3)
         self.assertRaises(StopIteration, pwl_it.__next__)
 
     def test_count(self):
-        btcrpass.parse_arguments(("--tokenlist __funccall --listpass"+utf8_opt).split(),
-                                 tokenlist = StringIO(tstr("one two three")), disable_security_warning_param = True)
+        btcrpass.parse_arguments(
+            f"--tokenlist __funccall --listpass{utf8_opt}".split(),
+            tokenlist=StringIO(tstr("one two three")),
+            disable_security_warning_param=True,
+        )
         self.assertEqual(btcrpass.count_and_check_eta(1.0), 3)
     def test_count_zero(self):
-        btcrpass.parse_arguments(("--tokenlist __funccall --listpass"+utf8_opt).split(),
-                                 tokenlist = StringIO(tstr("")), disable_security_warning_param = True)
+        btcrpass.parse_arguments(
+            f"--tokenlist __funccall --listpass{utf8_opt}".split(),
+            tokenlist=StringIO(tstr("")),
+            disable_security_warning_param=True,
+        )
         self.assertEqual(btcrpass.count_and_check_eta(1.0), 0)
     # the size of a "chunk" is == btcrpass.PASSWORDS_BETWEEN_UPDATES == 100000
     def test_count_one_chunk(self):
         assert btcrpass.PASSWORDS_BETWEEN_UPDATES == 100000
-        btcrpass.parse_arguments(("--tokenlist __funccall --listpass"+utf8_opt).split(),
-                                 tokenlist = StringIO(tstr("%5d")), disable_security_warning_param = True)
+        btcrpass.parse_arguments(
+            f"--tokenlist __funccall --listpass{utf8_opt}".split(),
+            tokenlist=StringIO(tstr("%5d")),
+            disable_security_warning_param=True,
+        )
         self.assertEqual(btcrpass.count_and_check_eta(1.0), 100000)
     def test_count_two_chunks(self):
         assert btcrpass.PASSWORDS_BETWEEN_UPDATES == 100000
-        btcrpass.parse_arguments(("--tokenlist __funccall --listpass"+utf8_opt).split(),
-                                 tokenlist = StringIO(tstr("%5d 100000")), disable_security_warning_param = True)
+        btcrpass.parse_arguments(
+            f"--tokenlist __funccall --listpass{utf8_opt}".split(),
+            tokenlist=StringIO(tstr("%5d 100000")),
+            disable_security_warning_param=True,
+        )
         self.assertEqual(btcrpass.count_and_check_eta(1.0), 100001)
 
     def test_token_counts_min_0(self):
@@ -325,11 +355,26 @@ class Test03WildCards(GeneratorTester):
     def test_basics_1(self):
         self.do_generator_test(["%d"], list(map(tstr, range(10))), "--has-wildcards", True)
     def test_basics_2(self):
-        self.do_generator_test(["%dtest"], [str(i)+"test" for i in range(10)], "--has-wildcards", True)
+        self.do_generator_test(
+            ["%dtest"],
+            [f"{str(i)}test" for i in range(10)],
+            "--has-wildcards",
+            True,
+        )
     def test_basics_3(self):
-        self.do_generator_test(["te%dst"], ["te"+str(i)+"st" for i in range(10)], "--has-wildcards", True)
+        self.do_generator_test(
+            ["te%dst"],
+            [f"te{str(i)}st" for i in range(10)],
+            "--has-wildcards",
+            True,
+        )
     def test_basics_4(self):
-        self.do_generator_test(["test%d"], ["test"+str(i) for i in range(10)], "--has-wildcards", True)
+        self.do_generator_test(
+            ["test%d"],
+            [f"test{str(i)}" for i in range(10)],
+            "--has-wildcards",
+            True,
+        )
 
     def test_invalid_nocust(self):
         self.expect_syntax_failure(["%c"],    "invalid wildcard")
@@ -422,28 +467,52 @@ class Test03WildCards(GeneratorTester):
     # Use a --delimiter of TAB below in case the LEET_MAP_FILE path contains any spaces
     @unittest.skipUnless(os.path.isfile(LEET_MAP_FILE), "requires leet-map.txt file")
     def test_backreference_map(self):
-        self.do_generator_test(["%[bc]%;"+LEET_MAP_FILE+";b"],
-            ["b8", "b6", "c("], "--has-wildcards -d --delimiter \t", True)
+        self.do_generator_test(
+            [f"%[bc]%;{LEET_MAP_FILE};b"],
+            ["b8", "b6", "c("],
+            "--has-wildcards -d --delimiter \t",
+            True,
+        )
     @unittest.skipUnless(os.path.isfile(LEET_MAP_FILE), "requires leet-map.txt file")
     def test_backreference_map_missing(self):
-        self.do_generator_test(["%[cd]%;"+LEET_MAP_FILE+";b"],
-            ["c(", "dd"], "--has-wildcards -d --delimiter \t", True)
+        self.do_generator_test(
+            [f"%[cd]%;{LEET_MAP_FILE};b"],
+            ["c(", "dd"],
+            "--has-wildcards -d --delimiter \t",
+            True,
+        )
     @unittest.skipUnless(os.path.isfile(LEET_MAP_FILE), "requires leet-map.txt file")
     def test_backreference_map_length(self):
-        self.do_generator_test(["%[bc]%2,3;"+LEET_MAP_FILE+";b"],
-            ["b88", "b888", "b66", "b666", "c((", "c((("], "--has-wildcards -d --delimiter \t", True)
+        self.do_generator_test(
+            [f"%[bc]%2,3;{LEET_MAP_FILE};b"],
+            ["b88", "b888", "b66", "b666", "c((", "c((("],
+            "--has-wildcards -d --delimiter \t",
+            True,
+        )
     @unittest.skipUnless(os.path.isfile(LEET_MAP_FILE), "requires leet-map.txt file")
     def test_backreference_map_pos(self):
-        self.do_generator_test(["%[bc]X%;"+LEET_MAP_FILE+";2b"],
-            ["bX8", "bX6", "cX("], "--has-wildcards -d --delimiter \t", True)
+        self.do_generator_test(
+            [f"%[bc]X%;{LEET_MAP_FILE};2b"],
+            ["bX8", "bX6", "cX("],
+            "--has-wildcards -d --delimiter \t",
+            True,
+        )
     @unittest.skipUnless(os.path.isfile(LEET_MAP_FILE), "requires leet-map.txt file")
     def test_backreference_map_pos_length(self):
-        self.do_generator_test(["%[bc]X%2,3;"+LEET_MAP_FILE+";2b"],
-            ["bX8%", "bX8%8", "bX6%", "bX6%6", "cX(%", "cX(%("], "--has-wildcards -d --delimiter \t", True)
+        self.do_generator_test(
+            [f"%[bc]X%2,3;{LEET_MAP_FILE};2b"],
+            ["bX8%", "bX8%8", "bX6%", "bX6%6", "cX(%", "cX(%("],
+            "--has-wildcards -d --delimiter \t",
+            True,
+        )
     @unittest.skipUnless(os.path.isfile(LEET_MAP_FILE), "requires leet-map.txt file")
     def test_backreference_map_bounds(self):
-        self.do_generator_test(["%[bc]%1,3;"+LEET_MAP_FILE+";3b"],
-            ["b", "b8", "b6", "c", "c("], "--has-wildcards -d --delimiter \t", True)
+        self.do_generator_test(
+            [f"%[bc]%1,3;{LEET_MAP_FILE};3b"],
+            ["b", "b8", "b6", "c", "c("],
+            "--has-wildcards -d --delimiter \t",
+            True,
+        )
 
 
 class Test04Typos(GeneratorTester):
@@ -638,8 +707,11 @@ class Test05CommandLine(GeneratorTester):
         self.do_generator_test(["да"], ["да", "вда", "два", "дав"], "--typos-insert в")
 
     def test_passwordlist_no_wildcards(self):
-        btcrpass.parse_arguments(("--passwordlist __funccall --listpass"+utf8_opt).split(),
-                                 passwordlist = StringIO(tstr("%%")), disable_security_warning_param = True)
+        btcrpass.parse_arguments(
+            f"--passwordlist __funccall --listpass{utf8_opt}".split(),
+            passwordlist=StringIO(tstr("%%")),
+            disable_security_warning_param=True,
+        )
         tok_it, skipped = btcrpass.password_generator_factory(2)
         self.assertEqual(tok_it.__next__(), ["%%"])
 
@@ -665,71 +737,134 @@ class Test05CommandLine(GeneratorTester):
     def test_skip_all_pastend_1(self):
         self.do_generator_test(["one"], [], "--skip 2", True, sys.maxsize, 1)
     def test_skip_all_pastend_2(self):
-        self.do_generator_test(["one"], [], "--skip " + str(self.LARGE_TOKENLIST_LEN), True, sys.maxsize, 1)
+        self.do_generator_test(
+            ["one"],
+            [],
+            f"--skip {str(self.LARGE_TOKENLIST_LEN)}",
+            True,
+            sys.maxsize,
+            1,
+        )
     def test_skip_empty_1(self):
         self.do_generator_test([], [], "--skip 1", True, sys.maxsize, 0)
     def test_skip_empty_2(self):
-        self.do_generator_test([], [], "--skip " + str(self.LARGE_TOKENLIST_LEN), True, sys.maxsize, 0)
+        self.do_generator_test(
+            [], [], f"--skip {str(self.LARGE_TOKENLIST_LEN)}", True, sys.maxsize, 0
+        )
     def test_skip_large_1(self):
-        self.do_generator_test([self.LARGE_TOKENLIST], [self.LARGE_LAST_TOKEN],
-                               "-d --skip " + str(self.LARGE_TOKENLIST_LEN - 1),
-                               False, sys.maxsize, self.LARGE_TOKENLIST_LEN - 1)
+        self.do_generator_test(
+            [self.LARGE_TOKENLIST],
+            [self.LARGE_LAST_TOKEN],
+            f"-d --skip {str(self.LARGE_TOKENLIST_LEN - 1)}",
+            False,
+            sys.maxsize,
+            self.LARGE_TOKENLIST_LEN - 1,
+        )
     def test_skip_large_1_all_exact(self):
-        self.do_generator_test([self.LARGE_TOKENLIST], [],
-                               "-d --skip " + str(self.LARGE_TOKENLIST_LEN),
-                               False, sys.maxsize, self.LARGE_TOKENLIST_LEN)
+        self.do_generator_test(
+            [self.LARGE_TOKENLIST],
+            [],
+            f"-d --skip {str(self.LARGE_TOKENLIST_LEN)}",
+            False,
+            sys.maxsize,
+            self.LARGE_TOKENLIST_LEN,
+        )
     def test_skip_large_1_all_pastend(self):
-        self.do_generator_test([self.LARGE_TOKENLIST], [],
-                               "-d --skip " + str(self.LARGE_TOKENLIST_LEN + 1),
-                               False, sys.maxsize, self.LARGE_TOKENLIST_LEN)
+        self.do_generator_test(
+            [self.LARGE_TOKENLIST],
+            [],
+            f"-d --skip {str(self.LARGE_TOKENLIST_LEN + 1)}",
+            False,
+            sys.maxsize,
+            self.LARGE_TOKENLIST_LEN,
+        )
     def test_skip_large_2(self):
-        self.do_generator_test([self.LARGE_TOKENLIST + " last"], ["last"],
-                               "-d --skip " + str(self.LARGE_TOKENLIST_LEN),
-                               False, sys.maxsize, self.LARGE_TOKENLIST_LEN)
+        self.do_generator_test(
+            [f"{self.LARGE_TOKENLIST} last"],
+            ["last"],
+            f"-d --skip {str(self.LARGE_TOKENLIST_LEN)}",
+            False,
+            sys.maxsize,
+            self.LARGE_TOKENLIST_LEN,
+        )
     def test_skip_large_2_all_exact(self):
-        self.do_generator_test([self.LARGE_TOKENLIST + " last"], [],
-                               "-d --skip " + str(self.LARGE_TOKENLIST_LEN + 1),
-                               False, sys.maxsize, self.LARGE_TOKENLIST_LEN + 1)
+        self.do_generator_test(
+            [f"{self.LARGE_TOKENLIST} last"],
+            [],
+            f"-d --skip {str(self.LARGE_TOKENLIST_LEN + 1)}",
+            False,
+            sys.maxsize,
+            self.LARGE_TOKENLIST_LEN + 1,
+        )
     def test_skip_large_2_all_pastend(self):
-        self.do_generator_test([self.LARGE_TOKENLIST + " last"], [],
-                               "-d --skip " + str(self.LARGE_TOKENLIST_LEN + 2),
-                               False, sys.maxsize, self.LARGE_TOKENLIST_LEN + 1)
+        self.do_generator_test(
+            [f"{self.LARGE_TOKENLIST} last"],
+            [],
+            f"-d --skip {str(self.LARGE_TOKENLIST_LEN + 2)}",
+            False,
+            sys.maxsize,
+            self.LARGE_TOKENLIST_LEN + 1,
+        )
     def test_skip_end2end(self):
-        btcrpass.parse_arguments(("--skip 2 --tokenlist __funccall --listpass"+utf8_opt).split(),
-                                 tokenlist = StringIO(tstr("one \n two")), disable_security_warning_param = True)
+        btcrpass.parse_arguments(
+            f"--skip 2 --tokenlist __funccall --listpass{utf8_opt}".split(),
+            tokenlist=StringIO(tstr("one \n two")),
+            disable_security_warning_param=True,
+        )
         self.assertIn("2 password combinations (plus 2 skipped)", btcrpass.main()[1])
     def test_skip_end2end_all_exact(self):
-        btcrpass.parse_arguments(("--skip 4 --tokenlist __funccall --listpass"+utf8_opt).split(),
-                                 tokenlist = StringIO(tstr("one \n two")), disable_security_warning_param = True)
+        btcrpass.parse_arguments(
+            f"--skip 4 --tokenlist __funccall --listpass{utf8_opt}".split(),
+            tokenlist=StringIO(tstr("one \n two")),
+            disable_security_warning_param=True,
+        )
         self.assertIn("0 password combinations (plus 4 skipped)", btcrpass.main()[1])
     def test_skip_end2end_all_pastend(self):
-        btcrpass.parse_arguments(("--skip 5 --tokenlist __funccall --listpass"+utf8_opt).split(),
-                                 tokenlist = StringIO(tstr("one \n two")), disable_security_warning_param = True)
+        btcrpass.parse_arguments(
+            f"--skip 5 --tokenlist __funccall --listpass{utf8_opt}".split(),
+            tokenlist=StringIO(tstr("one \n two")),
+            disable_security_warning_param=True,
+        )
         self.assertIn("0 password combinations (plus 4 skipped)", btcrpass.main()[1])
     def test_skip_end2end_all_noeta(self):
-        btcrpass.parse_arguments(("--skip 5 --tokenlist __funccall --no-eta --wallet __null"+utf8_opt).split(),
-                                 tokenlist = StringIO(tstr("one \n two")), disable_security_warning_param = True)
+        btcrpass.parse_arguments(
+            f"--skip 5 --tokenlist __funccall --no-eta --wallet __null{utf8_opt}".split(),
+            tokenlist=StringIO(tstr("one \n two")),
+            disable_security_warning_param=True,
+        )
         self.assertIn("Skipped all 4 passwords", btcrpass.main()[1])
 
     def test_max_eta(self):
-        btcrpass.parse_arguments(("--max-eta 1 --tokenlist __funccall --wallet __null"+utf8_opt).split(),
-                                 tokenlist = StringIO(tstr("1 2 3 4 5 6 7 8 9 10 11")), disable_security_warning_param = True)
+        btcrpass.parse_arguments(
+            f"--max-eta 1 --tokenlist __funccall --wallet __null{utf8_opt}".split(),
+            tokenlist=StringIO(tstr("1 2 3 4 5 6 7 8 9 10 11")),
+            disable_security_warning_param=True,
+        )
         with self.assertRaises(SystemExit) as cm:
             btcrpass.count_and_check_eta(360.0)  # 360s * 11 passwords > 1 hour
         self.assertIn("at least 11 passwords to try, ETA > --max-eta option (1 hours)", cm.exception.code)
     def test_max_eta_ok(self):
-        btcrpass.parse_arguments(("--max-eta 1 --tokenlist __funccall --wallet __null"+utf8_opt).split(),
-                                 tokenlist = StringIO(tstr("1 2 3 4 5 6 7 8 9 10")), disable_security_warning_param = True)
+        btcrpass.parse_arguments(
+            f"--max-eta 1 --tokenlist __funccall --wallet __null{utf8_opt}".split(),
+            tokenlist=StringIO(tstr("1 2 3 4 5 6 7 8 9 10")),
+            disable_security_warning_param=True,
+        )
         self.assertEqual(btcrpass.count_and_check_eta(360.0), 10)  # 360s * 10 passwords <= 1 hour
     def test_max_eta_skip(self):
-        btcrpass.parse_arguments(("--max-eta 1 --skip 4 --tokenlist __funccall --wallet __null"+utf8_opt).split(),
-                                 tokenlist = StringIO(tstr("1 2 3 4 5 6 7 8 9 10 11 12 13 14 15")), disable_security_warning_param = True)
+        btcrpass.parse_arguments(
+            f"--max-eta 1 --skip 4 --tokenlist __funccall --wallet __null{utf8_opt}".split(),
+            tokenlist=StringIO(tstr("1 2 3 4 5 6 7 8 9 10 11 12 13 14 15")),
+            disable_security_warning_param=True,
+        )
         with self.assertRaises(SystemExit) as cm:
             btcrpass.count_and_check_eta(360.0)  # 360s * 11 passwords > 1 hour
         self.assertIn("at least 11 passwords to try, ETA > --max-eta option (1 hours)", cm.exception.code)
     def test_max_eta_skip_ok(self):
-        btcrpass.parse_arguments(("--max-eta 1 --skip 5 --tokenlist __funccall --wallet __null"+utf8_opt).split(),
-                                 tokenlist = StringIO(tstr("1 2 3 4 5 6 7 8 9 10 11 12 13 14 15")), disable_security_warning_param = True)
+        btcrpass.parse_arguments(
+            f"--max-eta 1 --skip 5 --tokenlist __funccall --wallet __null{utf8_opt}".split(),
+            tokenlist=StringIO(tstr("1 2 3 4 5 6 7 8 9 10 11 12 13 14 15")),
+            disable_security_warning_param=True,
+        )
         # 360s * 10 passwords <= 1 hour, but count_and_check_eta still returns the total count of 15
         self.assertEqual(btcrpass.count_and_check_eta(360.0), 15)
 
@@ -784,8 +919,9 @@ class Test06AutosaveRestore(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.AUTOSAVE_ARGS = (
-            tstr("--autosave __funccall --tokenlist __funccall --data-extract --no-progress --threads 1"+utf8_opt)).split()
+        cls.AUTOSAVE_ARGS = tstr(
+            f"--autosave __funccall --tokenlist __funccall --data-extract --no-progress --threads 1{utf8_opt}"
+        ).split()
         cls.AUTOSAVE_TOKENLIST    = tstr("^one \n two \n three \n")
         cls.AUTOSAVE_DATA_EXTRACT = "bWI6oikebfNQTLk75CfI5X3svX6AC7NFeGsgTNXZfA=="
         cls.autosave_file         = BytesIONonClosing()
@@ -851,11 +987,13 @@ class Test06AutosaveRestore(unittest.TestCase):
     # but change the tokenlist file to generate an error
     def test_restore_changed_tokenlist(self):
         with self.assertRaises(SystemExit) as cm:
-            btcrpass.parse_arguments(self.AUTOSAVE_ARGS,
-                                     autosave     = BytesIO(self.autosave_file.getvalue()),
-                                     tokenlist    = StringIO(self.AUTOSAVE_TOKENLIST + "four"),
-                                     data_extract = self.AUTOSAVE_DATA_EXTRACT,
-                                     disable_security_warning_param = True)
+            btcrpass.parse_arguments(
+                self.AUTOSAVE_ARGS,
+                autosave=BytesIO(self.autosave_file.getvalue()),
+                tokenlist=StringIO(f"{self.AUTOSAVE_TOKENLIST}four"),
+                data_extract=self.AUTOSAVE_DATA_EXTRACT,
+                disable_security_warning_param=True,
+            )
         self.assertIn("can't restore previous session: the tokenlist file has changed", cm.exception.code)
 
     # Using --restore, restore (a copy of) the autosave data created by test_autosave(),
@@ -1047,15 +1185,8 @@ class Test07WalletDecryption(unittest.TestCase):
             temp_wallet_filename = os.path.join(temp_dir, os.path.basename(wallet_filename))
             try:
                 shutil.copyfile(wallet_filename, temp_wallet_filename)
-            except PermissionError:
-                temp_wallet_filename = "./btcrecover/test/test-wallets/" + arg_wallet_filename
-
-            except IsADirectoryError:
-                temp_wallet_filename = "./btcrecover/test/test-wallets/" + arg_wallet_filename
-
-            except FileNotFoundError:
-                temp_wallet_filename = "./btcrecover/test/test-wallets/" + arg_wallet_filename
-
+            except (PermissionError, IsADirectoryError, FileNotFoundError):
+                temp_wallet_filename = f"./btcrecover/test/test-wallets/{arg_wallet_filename}"
 
             if android_backuppass:
                 wallet = btcrpass.WalletAndroidSpendingPIN.load_from_filename(
@@ -1431,12 +1562,26 @@ class Test07WalletDecryption(unittest.TestCase):
 
         btcrecover.opencl_helpers.init_opencl_contexts(btcrpass.loaded_wallet)
 
-        self.assertEqual(btcrpass.WalletMetamask._return_verified_password_or_false_opencl(btcrpass.loaded_wallet,
-            [tstr("btcr-wrong-password-1"), tstr("btcr-wrong-password-2")]), (False, 2),
-            "Platform:" + str(btcrpass.loaded_wallet.opencl_platform) + " found a false positive")
-        self.assertEqual(btcrpass.WalletMetamask._return_verified_password_or_false_opencl(btcrpass.loaded_wallet,
-            [tstr("btcr-wrong-password-3"), tstr("btcr-test-password"), tstr("btcr-wrong-password-4")]), (tstr("btcr-test-password"), 2),
-            "Platform:" + str(btcrpass.loaded_wallet.opencl_platform) + " failed to find password")
+        self.assertEqual(
+            btcrpass.WalletMetamask._return_verified_password_or_false_opencl(
+                btcrpass.loaded_wallet,
+                [tstr("btcr-wrong-password-1"), tstr("btcr-wrong-password-2")],
+            ),
+            (False, 2),
+            f"Platform:{str(btcrpass.loaded_wallet.opencl_platform)} found a false positive",
+        )
+        self.assertEqual(
+            btcrpass.WalletMetamask._return_verified_password_or_false_opencl(
+                btcrpass.loaded_wallet,
+                [
+                    tstr("btcr-wrong-password-3"),
+                    tstr("btcr-test-password"),
+                    tstr("btcr-wrong-password-4"),
+                ],
+            ),
+            (tstr("btcr-test-password"), 2),
+            f"Platform:{str(btcrpass.loaded_wallet.opencl_platform)} failed to find password",
+        )
 
         del btcrpass.loaded_wallet
 
@@ -1453,12 +1598,26 @@ class Test07WalletDecryption(unittest.TestCase):
 
         btcrecover.opencl_helpers.init_opencl_contexts(btcrpass.loaded_wallet)
 
-        self.assertEqual(btcrpass.WalletBlockchainSecondpass._return_verified_password_or_false_opencl(btcrpass.loaded_wallet,
-            [tstr("btcr-wrong-password-1"), tstr("btcr-wrong-password-2")]), (False, 2),
-            "Platform:" + str(btcrpass.loaded_wallet.opencl_platform) + " found a false positive")
-        self.assertEqual(btcrpass.WalletBlockchainSecondpass._return_verified_password_or_false_opencl(btcrpass.loaded_wallet,
-            [tstr("btcr-wrong-password-3"), tstr("btcr-test-password"), tstr("btcr-wrong-password-4")]), (tstr("btcr-test-password"), 2),
-            "Platform:" + str(btcrpass.loaded_wallet.opencl_platform) + " failed to find password")
+        self.assertEqual(
+            btcrpass.WalletBlockchainSecondpass._return_verified_password_or_false_opencl(
+                btcrpass.loaded_wallet,
+                [tstr("btcr-wrong-password-1"), tstr("btcr-wrong-password-2")],
+            ),
+            (False, 2),
+            f"Platform:{str(btcrpass.loaded_wallet.opencl_platform)} found a false positive",
+        )
+        self.assertEqual(
+            btcrpass.WalletBlockchainSecondpass._return_verified_password_or_false_opencl(
+                btcrpass.loaded_wallet,
+                [
+                    tstr("btcr-wrong-password-3"),
+                    tstr("btcr-test-password"),
+                    tstr("btcr-wrong-password-4"),
+                ],
+            ),
+            (tstr("btcr-test-password"), 2),
+            f"Platform:{str(btcrpass.loaded_wallet.opencl_platform)} failed to find password",
+        )
 
         del btcrpass.loaded_wallet
 
@@ -1474,12 +1633,26 @@ class Test07WalletDecryption(unittest.TestCase):
 
         btcrecover.opencl_helpers.init_opencl_contexts(btcrpass.loaded_wallet)
 
-        self.assertEqual(btcrpass.WalletElectrum28._return_verified_password_or_false_opencl(btcrpass.loaded_wallet,
-            [tstr("btcr-wrong-password-1"), tstr("btcr-wrong-password-2")]), (False, 2),
-            "Platform:" + str(btcrpass.loaded_wallet.opencl_platform) + " found a false positive")
-        self.assertEqual(btcrpass.WalletElectrum28._return_verified_password_or_false_opencl(btcrpass.loaded_wallet,
-            [tstr("btcr-wrong-password-3"), tstr("btcr-test-password"), tstr("btcr-wrong-password-4")]), (tstr("btcr-test-password"), 2),
-            "Platform:" + str(btcrpass.loaded_wallet.opencl_platform) + " failed to find password")
+        self.assertEqual(
+            btcrpass.WalletElectrum28._return_verified_password_or_false_opencl(
+                btcrpass.loaded_wallet,
+                [tstr("btcr-wrong-password-1"), tstr("btcr-wrong-password-2")],
+            ),
+            (False, 2),
+            f"Platform:{str(btcrpass.loaded_wallet.opencl_platform)} found a false positive",
+        )
+        self.assertEqual(
+            btcrpass.WalletElectrum28._return_verified_password_or_false_opencl(
+                btcrpass.loaded_wallet,
+                [
+                    tstr("btcr-wrong-password-3"),
+                    tstr("btcr-test-password"),
+                    tstr("btcr-wrong-password-4"),
+                ],
+            ),
+            (tstr("btcr-test-password"), 2),
+            f"Platform:{str(btcrpass.loaded_wallet.opencl_platform)} failed to find password",
+        )
 
         del btcrpass.loaded_wallet
 
@@ -2173,12 +2346,29 @@ class Test08KeyDecryption(unittest.TestCase):
             try:
                 self.init_opencl_kernel([dev], [4])
 
-                self.assertEqual(btcrpass.WalletBitcoinCore._return_verified_password_or_false_gpu(btcrpass.loaded_wallet,
-                    [tstr("btcr-wrong-password-1"), tstr("btcr-wrong-password-2")]), (False, 2),
-                    dev.name.strip() + " found a false positive")
-                self.assertEqual(btcrpass.WalletBitcoinCore._return_verified_password_or_false_gpu(btcrpass.loaded_wallet,
-                    [tstr("btcr-wrong-password-3"), tstr("btcr-test-password"), tstr("btcr-wrong-password-4")]), (tstr("btcr-test-password"), 2),
-                    dev.name.strip() + " failed to find password")
+                self.assertEqual(
+                    btcrpass.WalletBitcoinCore._return_verified_password_or_false_gpu(
+                        btcrpass.loaded_wallet,
+                        [
+                            tstr("btcr-wrong-password-1"),
+                            tstr("btcr-wrong-password-2"),
+                        ],
+                    ),
+                    (False, 2),
+                    f"{dev.name.strip()} found a false positive",
+                )
+                self.assertEqual(
+                    btcrpass.WalletBitcoinCore._return_verified_password_or_false_gpu(
+                        btcrpass.loaded_wallet,
+                        [
+                            tstr("btcr-wrong-password-3"),
+                            tstr("btcr-test-password"),
+                            tstr("btcr-wrong-password-4"),
+                        ],
+                    ),
+                    (tstr("btcr-test-password"), 2),
+                    f"{dev.name.strip()} failed to find password",
+                )
 
                 test_succeeded = True
 
@@ -2202,9 +2392,18 @@ class Test08KeyDecryption(unittest.TestCase):
             try:
                 self.init_opencl_kernel([dev], [4])
 
-                self.assertEqual(btcrpass.WalletBitcoinCore._return_verified_password_or_false_gpu(btcrpass.loaded_wallet,
-                    ["btcr-wrong-password-3", "btcr-тест-пароль", "btcr-wrong-password-4"]), ("btcr-тест-пароль", 2),
-                    dev.name.strip() + " failed to find password")
+                self.assertEqual(
+                    btcrpass.WalletBitcoinCore._return_verified_password_or_false_gpu(
+                        btcrpass.loaded_wallet,
+                        [
+                            "btcr-wrong-password-3",
+                            "btcr-тест-пароль",
+                            "btcr-wrong-password-4",
+                        ],
+                    ),
+                    ("btcr-тест-пароль", 2),
+                    f"{dev.name.strip()} failed to find password",
+                )
 
                 test_succeeded = True
 
@@ -2278,12 +2477,26 @@ class Test08KeyDecryption(unittest.TestCase):
 
         btcrecover.opencl_helpers.init_opencl_contexts(btcrpass.loaded_wallet)
 
-        self.assertEqual(btcrpass.WalletBitcoinCore._return_verified_password_or_false_opencl(btcrpass.loaded_wallet,
-            [tstr("btcr-wrong-password-1"), tstr("btcr-wrong-password-2")]), (False, 2),
-            "Platform:" + str(btcrpass.loaded_wallet.opencl_platform) + " found a false positive")
-        self.assertEqual(btcrpass.WalletBitcoinCore._return_verified_password_or_false_opencl(btcrpass.loaded_wallet,
-            [tstr("btcr-wrong-password-3"), tstr("btcr-test-password"), tstr("btcr-wrong-password-4")]), (tstr("btcr-test-password"), 2),
-            "Platform:" + str(btcrpass.loaded_wallet.opencl_platform) + " failed to find password")
+        self.assertEqual(
+            btcrpass.WalletBitcoinCore._return_verified_password_or_false_opencl(
+                btcrpass.loaded_wallet,
+                [tstr("btcr-wrong-password-1"), tstr("btcr-wrong-password-2")],
+            ),
+            (False, 2),
+            f"Platform:{str(btcrpass.loaded_wallet.opencl_platform)} found a false positive",
+        )
+        self.assertEqual(
+            btcrpass.WalletBitcoinCore._return_verified_password_or_false_opencl(
+                btcrpass.loaded_wallet,
+                [
+                    tstr("btcr-wrong-password-3"),
+                    tstr("btcr-test-password"),
+                    tstr("btcr-wrong-password-4"),
+                ],
+            ),
+            (tstr("btcr-test-password"), 2),
+            f"Platform:{str(btcrpass.loaded_wallet.opencl_platform)} failed to find password",
+        )
 
     @skipUnless(has_any_opencl_devices, "requires OpenCL and a compatible device")
     def test_blockchain_main_OpenCL_Brute(self):
@@ -2293,12 +2506,26 @@ class Test08KeyDecryption(unittest.TestCase):
 
         btcrecover.opencl_helpers.init_opencl_contexts(btcrpass.loaded_wallet)
 
-        self.assertEqual(btcrpass.WalletBlockchain._return_verified_password_or_false_opencl(btcrpass.loaded_wallet,
-            [tstr("btcr-wrong-password-1"), tstr("btcr-wrong-password-2")]), (False, 2),
-            "Platform:" + str(btcrpass.loaded_wallet.opencl_platform) + " found a false positive")
-        self.assertEqual(btcrpass.WalletBlockchain._return_verified_password_or_false_opencl(btcrpass.loaded_wallet,
-            [tstr("btcr-wrong-password-3"), tstr("btcr-test-password"), tstr("btcr-wrong-password-4")]), (tstr("btcr-test-password"), 2),
-            "Platform:" + str(btcrpass.loaded_wallet.opencl_platform) + " failed to find password")
+        self.assertEqual(
+            btcrpass.WalletBlockchain._return_verified_password_or_false_opencl(
+                btcrpass.loaded_wallet,
+                [tstr("btcr-wrong-password-1"), tstr("btcr-wrong-password-2")],
+            ),
+            (False, 2),
+            f"Platform:{str(btcrpass.loaded_wallet.opencl_platform)} found a false positive",
+        )
+        self.assertEqual(
+            btcrpass.WalletBlockchain._return_verified_password_or_false_opencl(
+                btcrpass.loaded_wallet,
+                [
+                    tstr("btcr-wrong-password-3"),
+                    tstr("btcr-test-password"),
+                    tstr("btcr-wrong-password-4"),
+                ],
+            ),
+            (tstr("btcr-test-password"), 2),
+            f"Platform:{str(btcrpass.loaded_wallet.opencl_platform)} failed to find password",
+        )
 
     @skipUnless(has_any_opencl_devices, "requires OpenCL and a compatible device")
     def test_dogechain_info_OpenCL_Brute(self):
@@ -2308,12 +2535,26 @@ class Test08KeyDecryption(unittest.TestCase):
 
         btcrecover.opencl_helpers.init_opencl_contexts(btcrpass.loaded_wallet)
 
-        self.assertEqual(btcrpass.WalletDogechain._return_verified_password_or_false_opencl(btcrpass.loaded_wallet,
-            [tstr("btcr-wrong-password-1"), tstr("btcr-wrong-password-2")]), (False, 2),
-            "Platform:" + str(btcrpass.loaded_wallet.opencl_platform) + " found a false positive")
-        self.assertEqual(btcrpass.WalletDogechain._return_verified_password_or_false_opencl(btcrpass.loaded_wallet,
-            [tstr("btcr-wrong-password-3"), tstr("btcr-test-password"), tstr("btcr-wrong-password-4")]), (tstr("btcr-test-password"), 2),
-            "Platform:" + str(btcrpass.loaded_wallet.opencl_platform) + " failed to find password")
+        self.assertEqual(
+            btcrpass.WalletDogechain._return_verified_password_or_false_opencl(
+                btcrpass.loaded_wallet,
+                [tstr("btcr-wrong-password-1"), tstr("btcr-wrong-password-2")],
+            ),
+            (False, 2),
+            f"Platform:{str(btcrpass.loaded_wallet.opencl_platform)} found a false positive",
+        )
+        self.assertEqual(
+            btcrpass.WalletDogechain._return_verified_password_or_false_opencl(
+                btcrpass.loaded_wallet,
+                [
+                    tstr("btcr-wrong-password-3"),
+                    tstr("btcr-test-password"),
+                    tstr("btcr-wrong-password-4"),
+                ],
+            ),
+            (tstr("btcr-test-password"), 2),
+            f"Platform:{str(btcrpass.loaded_wallet.opencl_platform)} failed to find password",
+        )
 
 
     def test_invalid_crc(self):
@@ -2326,49 +2567,81 @@ class GPUTests(unittest.TestSuite) :
         import os
         os.environ['PYOPENCL_COMPILER_OUTPUT'] = '1'
         super(GPUTests, self).__init__()
-        self.addTest(unittest.defaultTestLoader.loadTestsFromNames(("Test08KeyDecryption." + method_name
-            for method_name in (
-                "test_bitcoincore_OpenCL_JTR",
-                "test_bitcoincore_OpenCL_JTR_unicode",
-                "test_bitcoincore_OpenCL_JTR_low_interrupt_rate",
-                "test_bitcoincore_OpenCL_JTR_sli")),
-            module=sys.modules[__name__]
-        ))
+        self.addTest(
+            unittest.defaultTestLoader.loadTestsFromNames(
+                (
+                    f"Test08KeyDecryption.{method_name}"
+                    for method_name in (
+                        "test_bitcoincore_OpenCL_JTR",
+                        "test_bitcoincore_OpenCL_JTR_unicode",
+                        "test_bitcoincore_OpenCL_JTR_low_interrupt_rate",
+                        "test_bitcoincore_OpenCL_JTR_sli",
+                    )
+                ),
+                module=sys.modules[__name__],
+            )
+        )
 
 class OpenCL_Tests(unittest.TestSuite) :
     def __init__(self):
         import os
         os.environ['PYOPENCL_COMPILER_OUTPUT'] = '1'
         super(OpenCL_Tests, self).__init__()
-        self.addTest(unittest.defaultTestLoader.loadTestsFromNames(("Test08KeyDecryption." + method_name
-            for method_name in (
-                "test_bitcoincore_OpenCL_Brute",
-                "test_blockchain_main_OpenCL_Brute")),
-            module=sys.modules[__name__]
-        ))
-        self.addTest(unittest.defaultTestLoader.loadTestsFromNames(("Test07WalletDecryption." + method_name
-            for method_name in (
-                "test_blockchain_second_OpenCL_Brute",
-                "test_electrum28_OpenCL_Brute")),
-            module=sys.modules[__name__]
-        ))
-        self.addTest(unittest.defaultTestLoader.loadTestsFromNames(("Test08BIP39Passwords." + method_name
-            for method_name in (
-                "test_bip39_mpk_opencl_brute",
-                "test_Electrum2_mpk_opencl_brute")),
-            module=sys.modules[__name__]
-        ))
-        self.addTest(unittest.defaultTestLoader.loadTestsFromNames(("Test10YoroiWalletDecryption." + method_name
-            for method_name in (
-                ["test_yoroi_opencl_brute"])),
-            module=sys.modules[__name__]
-        ))
+        self.addTest(
+            unittest.defaultTestLoader.loadTestsFromNames(
+                (
+                    f"Test08KeyDecryption.{method_name}"
+                    for method_name in (
+                        "test_bitcoincore_OpenCL_Brute",
+                        "test_blockchain_main_OpenCL_Brute",
+                    )
+                ),
+                module=sys.modules[__name__],
+            )
+        )
+        self.addTest(
+            unittest.defaultTestLoader.loadTestsFromNames(
+                (
+                    f"Test07WalletDecryption.{method_name}"
+                    for method_name in (
+                        "test_blockchain_second_OpenCL_Brute",
+                        "test_electrum28_OpenCL_Brute",
+                    )
+                ),
+                module=sys.modules[__name__],
+            )
+        )
+        self.addTest(
+            unittest.defaultTestLoader.loadTestsFromNames(
+                (
+                    f"Test08BIP39Passwords.{method_name}"
+                    for method_name in (
+                        "test_bip39_mpk_opencl_brute",
+                        "test_Electrum2_mpk_opencl_brute",
+                    )
+                ),
+                module=sys.modules[__name__],
+            )
+        )
+        self.addTest(
+            unittest.defaultTestLoader.loadTestsFromNames(
+                (
+                    f"Test10YoroiWalletDecryption.{method_name}"
+                    for method_name in (["test_yoroi_opencl_brute"])
+                ),
+                module=sys.modules[__name__],
+            )
+        )
 
-        self.addTest(unittest.defaultTestLoader.loadTestsFromNames(("Test11BIP38WalletDecryption." + method_name
-            for method_name in (
-                ["test_bip38_bitcoin_opencl_brute"])),
-            module=sys.modules[__name__]
-        ))
+        self.addTest(
+            unittest.defaultTestLoader.loadTestsFromNames(
+                (
+                    f"Test11BIP38WalletDecryption.{method_name}"
+                    for method_name in (["test_bip38_bitcoin_opencl_brute"])
+                ),
+                module=sys.modules[__name__],
+            )
+        )
 
 
 
@@ -2534,11 +2807,7 @@ class Test12BrainwalletDecryption(unittest.TestCase):
                                             isWarpwallet=warpwallet,
                                             salt = salt,
                                             crypto=crypto)
-        if password:
-            correct_pw = password
-        else:
-            correct_pw = tstr("btcr-test-password")
-
+        correct_pw = password if password else tstr("btcr-test-password")
         self.assertEqual(wallet._return_verified_password_or_false_cpu(
             (tstr("btcr-wrong-password-1"), tstr("btcr-wrong-password-2"))), (False, 2))
         self.assertEqual(wallet._return_verified_password_or_false_cpu(
@@ -2560,11 +2829,7 @@ class Test12BrainwalletDecryption(unittest.TestCase):
         btcrecover.opencl_helpers.auto_select_opencl_platform(wallet)
         btcrecover.opencl_helpers.init_opencl_contexts(wallet)
 
-        if password:
-            correct_pw = password
-        else:
-            correct_pw = tstr("btcr-test-password")
-
+        correct_pw = password if password else tstr("btcr-test-password")
         self.assertEqual(wallet._return_verified_password_or_false_opencl(
             (tstr("btcr-wrong-password-1"), tstr("btcr-wrong-password-2"))), (False, 2))
         self.assertEqual(wallet._return_verified_password_or_false_opencl(
@@ -2688,70 +2953,83 @@ class QuickTests(unittest.TestSuite) :
         tl = unittest.defaultTestLoader
         self.addTests(tl.loadTestsFromTestCase(TestCase)
             for TestCase in (Test01Basics, Test02Anchors, Test03WildCards, Test04Typos))
-        self.addTest(tl.loadTestsFromNames(("Test05CommandLine." + method_name
-            for method_name in tl.getTestCaseNames(Test05CommandLine) if "large" not in method_name),
-            module=sys.modules[__name__]))
-        self.addTest(tl.loadTestsFromNames(("Test08KeyDecryption." + method_name
-            for method_name in (
-                "test_bitcoincore_pp",
-                "test_bitcoincore_unicode_pp",
-                "test_multibit",
-                "test_multibit_unicode",
-                "test_multidoge",
-                "test_multidoge_unicode",
-                "test_androidwallet",
-                "test_androidwallet_unicode",
-                "test_androidknc",
-                "test_androidknc_unicode",
-                "test_multibithd",
-                "test_multibithd_unicode",
-                "test_multibithd_v0_5_0",
-                "test_bitcoinj",
-                "test_bitcoinj_unicode",
-                "test_bither",
-                "test_bither_unicode",
-                "test_msigna",
-                "test_msigna_unicode",
-                "test_electrum",
-                "test_electrum_unicode",
-                "test_electrum2",
-                "test_electrum2_unicode",
-                "test_electrum2_loosekey",
-                "test_blockchain_v0",
-                "test_blockchain_v0_unicode",
-                "test_blockchain_v2",
-                "test_blockchain_secondpass",
-                "test_blockchain_secondpass_unicode",
-                "test_blockchain_secondpass_no_iter_count",
-                "test_multibit_pp",
-                "test_multibit_unicode_pp",
-                "test_multidoge_pp",
-                "test_multidoge_unicode_pp",
-                "test_androidwallet_pp",
-                "test_androidwallet_unicode_pp",
-                "test_androidknc_pp",
-                "test_androidknc_unicode_pp",
-                "test_multibithd_pp",
-                "test_multibithd_unicode_pp",
-                "test_multibithd_v0_5_0_pp",
-                "test_bitcoinj_pp",
-                "test_bitcoinj_unicode_pp",
-                "test_bither_pp",
-                "test_bither_unicode_pp",
-                "test_msigna_pp",
-                "test_msigna_unicode_pp",
-                "test_electrum_pp",
-                "test_electrum_unicode_pp",
-                "test_electrum2_pp",
-                "test_electrum2_unicode_pp",
-                "test_blockchain_v0_pp",
-                "test_blockchain_v0_unicode_pp",
-                "test_blockchain_secondpass_pp",
-                "test_blockchain_secondpass_unicode_pp",
-                "test_blockchain_secondpass_no_iter_count_pp",
-                "test_invalid_crc")),
-            module=sys.modules[__name__]
-        ))
+        self.addTest(
+            tl.loadTestsFromNames(
+                (
+                    f"Test05CommandLine.{method_name}"
+                    for method_name in tl.getTestCaseNames(Test05CommandLine)
+                    if "large" not in method_name
+                ),
+                module=sys.modules[__name__],
+            )
+        )
+        self.addTest(
+            tl.loadTestsFromNames(
+                (
+                    f"Test08KeyDecryption.{method_name}"
+                    for method_name in (
+                        "test_bitcoincore_pp",
+                        "test_bitcoincore_unicode_pp",
+                        "test_multibit",
+                        "test_multibit_unicode",
+                        "test_multidoge",
+                        "test_multidoge_unicode",
+                        "test_androidwallet",
+                        "test_androidwallet_unicode",
+                        "test_androidknc",
+                        "test_androidknc_unicode",
+                        "test_multibithd",
+                        "test_multibithd_unicode",
+                        "test_multibithd_v0_5_0",
+                        "test_bitcoinj",
+                        "test_bitcoinj_unicode",
+                        "test_bither",
+                        "test_bither_unicode",
+                        "test_msigna",
+                        "test_msigna_unicode",
+                        "test_electrum",
+                        "test_electrum_unicode",
+                        "test_electrum2",
+                        "test_electrum2_unicode",
+                        "test_electrum2_loosekey",
+                        "test_blockchain_v0",
+                        "test_blockchain_v0_unicode",
+                        "test_blockchain_v2",
+                        "test_blockchain_secondpass",
+                        "test_blockchain_secondpass_unicode",
+                        "test_blockchain_secondpass_no_iter_count",
+                        "test_multibit_pp",
+                        "test_multibit_unicode_pp",
+                        "test_multidoge_pp",
+                        "test_multidoge_unicode_pp",
+                        "test_androidwallet_pp",
+                        "test_androidwallet_unicode_pp",
+                        "test_androidknc_pp",
+                        "test_androidknc_unicode_pp",
+                        "test_multibithd_pp",
+                        "test_multibithd_unicode_pp",
+                        "test_multibithd_v0_5_0_pp",
+                        "test_bitcoinj_pp",
+                        "test_bitcoinj_unicode_pp",
+                        "test_bither_pp",
+                        "test_bither_unicode_pp",
+                        "test_msigna_pp",
+                        "test_msigna_unicode_pp",
+                        "test_electrum_pp",
+                        "test_electrum_unicode_pp",
+                        "test_electrum2_pp",
+                        "test_electrum2_unicode_pp",
+                        "test_blockchain_v0_pp",
+                        "test_blockchain_v0_unicode_pp",
+                        "test_blockchain_secondpass_pp",
+                        "test_blockchain_secondpass_unicode_pp",
+                        "test_blockchain_secondpass_no_iter_count_pp",
+                        "test_invalid_crc",
+                    )
+                ),
+                module=sys.modules[__name__],
+            )
+        )
         self.addTests(tl.loadTestsFromTestCase(Test08BIP39Passwords))
 
 

@@ -17,8 +17,8 @@ from bitcoinlib.mnemonic import Mnemonic
 #
 
 # First recreate database to avoid already exist errors
-test_databasefile = BCL_DATABASE_DIR + 'bitcoinlib.test.sqlite'
-test_database = 'sqlite:///' + test_databasefile
+test_databasefile = f'{BCL_DATABASE_DIR}bitcoinlib.test.sqlite'
+test_database = f'sqlite:///{test_databasefile}'
 if os.path.isfile(test_databasefile):
     os.remove(test_databasefile)
 
@@ -125,7 +125,7 @@ print("\n=== Create Litecoin testnet Wallet from Mnemonic Passphrase ===")
 words = 'blind frequent camera goddess pottery repair skull year mistake wrist lonely mix'
 # Or use generate method:
 #   words = Mnemonic('english').generate()
-print("Generated Passphrase: %s" % words)
+print(f"Generated Passphrase: {words}")
 seed = Mnemonic().to_seed(words)
 hdkey = HDKey.from_seed(seed, network='litecoin_testnet')
 wallet = HDWallet.create(name='Mnemonic Wallet', network='litecoin_testnet',
@@ -141,11 +141,11 @@ w = HDWallet.create(
 try:
     w.import_key(key='T43gB4F6k1Ly3YWbMuddq13xLb56hevUDP3RthKArr7FPHjQiXpp', network='litecoin')
 except WalletError as e:
-    print("Import litecoin key in bitcoin wallet gives an EXPECTED error: %s" % e)
+    print(f"Import litecoin key in bitcoin wallet gives an EXPECTED error: {e}")
 
 print("\n=== Normalize BIP32 key path ===")
 key_path = "m/44h/1'/0p/2000/1"
-print("Raw: %s, Normalized: %s" % (key_path, normalize_path(key_path)))
+print(f"Raw: {key_path}, Normalized: {normalize_path(key_path)}")
 
 print("\n=== Send test bitcoins to an address ===")
 wallet_import = HDWallet('TestNetWallet', db_uri=test_database)
@@ -162,7 +162,7 @@ try:
     else:
         print("TX not send, result:", res.errors)
 except WalletError as e:
-    print("TX not send, error: %s" % e.msg)
+    print(f"TX not send, error: {e.msg}")
 except Exception as e:
     print(e)
 

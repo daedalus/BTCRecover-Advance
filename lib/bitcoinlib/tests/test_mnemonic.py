@@ -32,10 +32,7 @@ class TestMnemonics(unittest.TestCase):
     def _check_list(self, language, vectors):
         mnemo = Mnemonic(language)
         for v in vectors:
-            if v[0]:
-                phrase = mnemo.to_mnemonic(v[0], check_on_curve=False)
-            else:
-                phrase = v[1]
+            phrase = mnemo.to_mnemonic(v[0], check_on_curve=False) if v[0] else v[1]
             seed = change_base(mnemo.to_seed(phrase, v[4], validate=False), 256, 16)
             # print("Test %s => %s" % (v[0], phrase))
             self.assertEqual(v[1], phrase)
@@ -46,7 +43,7 @@ class TestMnemonics(unittest.TestCase):
     # From Copyright (c) 2013 Pavol Rusnak <https://github.com/trezor/python-mnemonic>
     def test_vectors(self):
         workdir = os.path.dirname(__file__)
-        with open('%s/%s' % (workdir, 'mnemonics_tests.json')) as f:
+        with open(f'{workdir}/mnemonics_tests.json') as f:
             vectors = json.load(f)
         for lang in vectors.keys():
             self._check_list(lang, vectors[lang])

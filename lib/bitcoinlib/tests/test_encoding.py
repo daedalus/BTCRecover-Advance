@@ -310,7 +310,11 @@ class TestEncodingBech32SegwitAddresses(unittest.TestCase):
             hrp = test[:pos]
             data = _codestring_to_array(test[pos + 1:], 'bech32')
             hrp_expanded = [ord(x) >> 5 for x in hrp] + [0] + [ord(x) & 31 for x in hrp]
-            self.assertEqual(_bech32_polymod(hrp_expanded + data), 1, msg="Invalid checksum for address %s" % test)
+            self.assertEqual(
+                _bech32_polymod(hrp_expanded + data),
+                1,
+                msg=f"Invalid checksum for address {test}",
+            )
             test = test[:pos+1] + chr(ord(test[pos + 1]) ^ 1) + test[pos+2:]
             try:
                 self.assertFalse(addr_bech32_to_pubkeyhash(test, hrp))

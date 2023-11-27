@@ -521,7 +521,7 @@ class TestBip38(unittest.TestCase):
 
     def setUp(self):
         workdir = os.path.dirname(__file__)
-        with open('%s/%s' % (workdir, 'bip38_protected_key_tests.json'), 'r') as f:
+        with open(f'{workdir}/bip38_protected_key_tests.json', 'r') as f:
             self.vectors = json.load(f)
 
     def test_encrypt_private_key(self):
@@ -529,7 +529,7 @@ class TestBip38(unittest.TestCase):
             return
         for v in self.vectors["valid"]:
             k = Key(v['wif'])
-            print("Check %s + %s = %s " % (v['wif'], v['passphrase'], v['bip38']))
+            print(f"Check {v['wif']} + {v['passphrase']} = {v['bip38']} ")
             self.assertEqual(str(v['bip38']), k.bip38_encrypt(str(v['passphrase'])))
 
     def test_decrypt_bip38_key(self):
@@ -537,14 +537,14 @@ class TestBip38(unittest.TestCase):
             return
         for v in self.vectors["valid"]:
             k = Key(v['bip38'], passphrase=str(v['passphrase']))
-            print("Check %s - %s = %s " % (v['bip38'], v['passphrase'], v['wif']))
+            print(f"Check {v['bip38']} - {v['passphrase']} = {v['wif']} ")
             self.assertEqual(str(v['wif']), k.wif())
 
     def test_bip38_invalid_keys(self):
         if not USING_MODULE_SCRYPT:
             return
         for v in self.vectors["invalid"]["verify"]:
-            print("Checking invalid key %s" % v['base58'])
+            print(f"Checking invalid key {v['base58']}")
             self.assertRaisesRegexp(Exception, "", Key, str(v['base58']))
 
     def test_bip38_other_networks(self):
@@ -785,13 +785,11 @@ class TestKeysSignatures(unittest.TestCase):
         sig_method1 = sign(sig_tests[0][0], sig_tests[0][1], k=sig_tests[0][2])
         self.assertEqual(sig_method1.hex(), sig_tests[0][3])
         self.assertEqual(to_hexstring(sig_method1.as_der_encoded()), sig_tests[0][4])
-        count = 0
-        for case in sig_tests:
+        for count, case in enumerate(sig_tests):
             sig = Signature.create(case[0], case[1], k=case[2])
             self.assertEqual(sig.hex(), case[3], msg="Error in #%d: %s != %s" % (count, sig.hex(), case[3]))
             self.assertEqual(to_hexstring(sig.as_der_encoded()), case[4])
             self.assertTrue(sig.verify())
-            count += 1
 
     def test_rfc6979(self):
         if not USE_FASTECDSA:

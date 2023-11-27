@@ -42,7 +42,7 @@ class CryptoID(BaseClient):
         if variables is None:
             variables = {}
         if path_type == 'api':
-            url_path = '%s/api.dws' % self.provider_coin_id
+            url_path = f'{self.provider_coin_id}/api.dws'
             variables.update({'q': func})
         else:
             url_path = 'explorer/tx.raw.dws'
@@ -63,13 +63,14 @@ class CryptoID(BaseClient):
     def getutxos(self, address, after_txid='', max_txs=MAX_TRANSACTIONS):
         if not self.api_key:
             raise ClientError("Method getutxos() is not available for CryptoID without API key")
-        utxos = []
         address = self._address_convert(address)
         variables = {'active': address.address}
         res = self.compose_request('unspent', variables=variables)
         if len(res['unspent_outputs']) > 50:
-            _logger.info("CryptoID: Large number of outputs for address %s, "
-                            "UTXO list may be incomplete" % address.address)
+            _logger.info(
+                f"CryptoID: Large number of outputs for address {address.address}, UTXO list may be incomplete"
+            )
+        utxos = []
         for utxo in res['unspent_outputs'][::-1]:
             if utxo['tx_hash'] == after_txid:
                 break
@@ -99,12 +100,9 @@ class CryptoID(BaseClient):
                 i.value = int(round(tx_api['inputs'][n]['amount'] * self.units, 0))
             else:
                 t.coinbase = True
-        for n, o in enumerate(t.outputs):
+        for o in t.outputs:
             o.spent = None
-        if tx['confirmations']:
-            t.status = 'confirmed'
-        else:
-            t.status = 'unconfirmed'
+        t.status = 'confirmed' if tx['confirmations'] else 'unconfirmed'
         t.hash = tx_id
         t.date = datetime.fromtimestamp(tx['time'])
         t.block_height = tx_api['block']
@@ -148,12 +146,9 @@ class CryptoID(BaseClient):
     # def estimatefee
 
     def blockcount(self):
-        r = self.compose_request('getblockcount', path_type='api')
-        return r
+        return self.compose_request('getblockcount', path_type='api')
 
     def mempool(self, txid):
         variables = {'id': txid, 'hex': None}
         tx = self.compose_request(path_type='explorer', variables=variables)
-        if 'confirmations' not in tx:
-            return [tx['txid']]
-        return []
+        return [tx['txid']] if 'confirmations' not in tx else []

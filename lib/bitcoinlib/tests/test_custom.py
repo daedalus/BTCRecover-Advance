@@ -32,7 +32,7 @@ class CustomAssertions:
             if expected_dict == result_dict:
                 return True
             else:
-                raise AssertionError("Different value for %s != %s" % (result_dict, expected_dict))
+                raise AssertionError(f"Different value for {result_dict} != {expected_dict}")
         expected_keys = expected_dict.keys()
         for k in result_dict:
             if k not in expected_keys:
@@ -42,12 +42,15 @@ class CustomAssertions:
             elif isinstance(result_dict[k], list):
                 for i in range(len(result_dict[k])):
                     if not isinstance(expected_dict[k], list):
-                        raise AssertionError("No list expected for %s attribute, expected '%s' but received: '%s'" %
-                                             (k, expected_dict[k], result_dict[k]))
+                        raise AssertionError(
+                            f"No list expected for {k} attribute, expected '{expected_dict[k]}' but received: '{result_dict[k]}'"
+                        )
                     self.assertDictEqualExt(result_dict[k][i], expected_dict[k][i], none_allowed)
             elif result_dict[k] != expected_dict[k]:
                 if isinstance(result_dict[k], datetime.datetime):
                     if result_dict[k].date() == expected_dict[k].date():
                         continue
                 if result_dict[k] is not None or k not in none_allowed:
-                    raise AssertionError("Different value for '%s': %s != %s" % (k, result_dict[k], expected_dict[k]))
+                    raise AssertionError(
+                        f"Different value for '{k}': {result_dict[k]} != {expected_dict[k]}"
+                    )

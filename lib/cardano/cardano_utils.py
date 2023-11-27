@@ -31,9 +31,9 @@ def generateMasterKey_Icarus(mnemonic, passphrase, wordlist, langcode, trezor = 
 def generateHashKey_Icarus(mnemonic, passphrase, wordlist, langcode, trezor = False):
     seed = mnemonic_to_entropy(words=mnemonic, wordlist=wordlist, langcode=langcode, trezorDerivation=trezor)
 
-    data = hashlib.pbkdf2_hmac("SHA512", password=passphrase, salt=seed, iterations=4096, dklen=96)
-
-    return data
+    return hashlib.pbkdf2_hmac(
+        "SHA512", password=passphrase, salt=seed, iterations=4096, dklen=96
+    )
 
 def generateRootKey_Icarus(keyData):
     kL, kR, cP = keyData[:32], keyData[32:64], keyData[64:]
@@ -51,9 +51,13 @@ def generateHashKey_Ledger(mnemonic, passphrase):
     derivation_salt = b"mnemonic" + passphrase
     derivation_password = mnemonic.encode()
 
-    data = hashlib.pbkdf2_hmac("SHA512", password=derivation_password, salt=derivation_salt, iterations=2048, dklen=64)
-
-    return data
+    return hashlib.pbkdf2_hmac(
+        "SHA512",
+        password=derivation_password,
+        salt=derivation_salt,
+        iterations=2048,
+        dklen=64,
+    )
 
 def generateRootKey_Ledger(keyData):
     cP = hmac.new(key=b"ed25519 seed", msg=b'\x01' + keyData, digestmod=hashlib.sha256).digest()
@@ -72,10 +76,7 @@ def hashRepeatedly_ledger(message):
 
     kL, kR = kL_kR[:32], kL_kR[32:]
 
-    if (kL[31] & 0b00100000):
-        return hashRepeatedly_ledger(kL + kR)
-
-    return (kL, kR)
+    return hashRepeatedly_ledger(kL + kR) if (kL[31] & 0b00100000) else (kL, kR)
 
 def tweakBits_shelly(data):
     # on the ed25519 scalar leftmost 32 bytes:
@@ -96,8 +97,7 @@ def root_public_key(kL):
     cv25519 = Curve.get_curve("Ed25519")
     k_scalar = int.from_bytes(bytes(kL), 'little')
     P = k_scalar*cv25519.generator
-    A =  cv25519.encode_point(P)
-    return A
+    return cv25519.encode_point(P)
 
 # Pulled from orakolo HDEd25519 derive_seed (Using it here for more flexibility in terms of derivation)
 def derive_child_keys(parent_node, path, private):
@@ -110,11 +110,7 @@ def derive_child_keys(parent_node, path, private):
 
     BIP32Ed25519_class = HDEd25519.BIP32Ed25519()
     for i in path.split('/'):
-        if i.endswith("'"):
-            i = int(i[:-1]) + 2**31
-        else:
-            i = int(i)
-
+        i = int(i[:-1]) + 2**31 if i.endswith("'") else int(i)
         if private:
           node = BIP32Ed25519_class.private_child_key(node, i)
           ((kLP, kRP), AP, cP) = node
@@ -138,12 +134,8 @@ def mnemonic_to_entropy(words: Union[List[str], str], wordlist, langcode, trezor
     # concatenation of the original entropy and the checksum.
     concatLenBits = len(words) * 11
     concatBits = [False] * concatLenBits
-    wordindex = 0
-    if langcode == "en":
-        use_binary_search = True
-    else:
-        use_binary_search = False
-    for word in words:
+    use_binary_search = langcode == "en"
+    for wordindex, word in enumerate(words):
         # Find the words index in the wordlist
         ndx = (
             binary_search(wordlist, word)
@@ -151,11 +143,10 @@ def mnemonic_to_entropy(words: Union[List[str], str], wordlist, langcode, trezor
             else wordlist.index(word)
         )
         if ndx < 0:
-            raise LookupError('Unable to find "%s" in word list.' % word)
+            raise LookupError(f'Unable to find "{word}" in word list.')
         # Set the next 11 bits to the value of the index.
         for ii in range(11):
             concatBits[(wordindex * 11) + ii] = (ndx & (1 << (10 - ii))) != 0
-        wordindex += 1
     checksumLengthBits = concatLenBits // 33
 
     if trezorDerivation and len(words) == 24:

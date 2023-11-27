@@ -46,7 +46,9 @@ with open(privkey_filename, "rb") as privkey_file:
     if pb_wallet.encryption_type == coinomi_pb2.Wallet.UNENCRYPTED:
         raise ValueError("Coinomi wallet is not encrypted")
     if pb_wallet.encryption_type != coinomi_pb2.Wallet.ENCRYPTED_SCRYPT_AES:
-        raise NotImplementedError("Unsupported Coinomi wallet encryption type " + str(pb_wallet.encryption_type))
+        raise NotImplementedError(
+            f"Unsupported Coinomi wallet encryption type {str(pb_wallet.encryption_type)}"
+        )
     if not pb_wallet.HasField("encryption_parameters"):
         raise ValueError("Coinomi wallet is missing its scrypt encryption parameters")
 

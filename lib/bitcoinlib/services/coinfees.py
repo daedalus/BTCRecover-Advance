@@ -32,7 +32,7 @@ class CoinfeesClient(BaseClient):
     def compose_request(self, category, cmd, method='get'):
         url_path = category
         if cmd:
-            url_path += '/' + cmd
+            url_path += f'/{cmd}'
         return self.request(url_path, method=method)
 
     def estimatefee(self, blocks):

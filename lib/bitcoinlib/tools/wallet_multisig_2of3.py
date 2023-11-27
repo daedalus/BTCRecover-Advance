@@ -47,24 +47,23 @@ if not wallet_exists(WALLET_NAME):
         words = Mnemonic().generate(KEY_STRENGTH)
         password = ''
         if cosigner[2] == 'password':
-            password = input("Please give password for cosigner '%s': " % cosigner[0])
+            password = input(f"Please give password for cosigner '{cosigner[0]}': ")
         seed = Mnemonic().to_seed(words, password)
         hdkey = HDKey.from_seed(seed, network=NETWORK, key_type=cosigner[1], witness_type=WITNESS_TYPE)
         if cosigner[1] == 'bip32':
             public_account = hdkey.public_master_multisig(witness_type=WITNESS_TYPE)
         else:
             public_account = hdkey
-        print("Key for cosigner '%s' generated. Please store both passphrase and password carefully!" % cosigner[0])
-        print("Passphrase: %s" % words)
-        print("Password: %s" % ('*' * len(password)))
+        print(
+            f"Key for cosigner '{cosigner[0]}' generated. Please store both passphrase and password carefully!"
+        )
+        print(f"Passphrase: {words}")
+        print(f"Password: {'*' * len(password)}")
         print("Share this public key below with other cosigner")
-        print("Public key: %s" % public_account.wif_public())
+        print(f"Public key: {public_account.wif_public()}")
 
         for w in cosigners:
-            if cosigner[0] == w[0]:
-                addkey = hdkey
-            else:
-                addkey = public_account.public()
+            addkey = hdkey if cosigner[0] == w[0] else public_account.public()
             if w[0] not in key_lists:
                 key_lists[w[0]] = []
             if addkey not in key_lists[w[0]]:
@@ -84,21 +83,25 @@ if not wallet_exists(WALLET_NAME):
     print("key_list = [")
     for key in key_lists['Online PC']:
         if key.key_type == 'single':
-            print("     HDKey('%s', key_type='single', witness_type='%s')" % (key.wif_private(), WITNESS_TYPE))
+            print(
+                f"     HDKey('{key.wif_private()}', key_type='single', witness_type='{WITNESS_TYPE}')"
+            )
         else:
-            print("     '%s'," % key.wif_private())
+            print(f"     '{key.wif_private()}',")
     print("]")
-    print("wlt = HDWallet.create('%s', key_list, sigs_required=2, witness_type='%s', network='%s')" %
-          (WALLET_NAME, WITNESS_TYPE, NETWORK))
+    print(
+        f"wlt = HDWallet.create('{WALLET_NAME}', key_list, sigs_required=2, witness_type='{WITNESS_TYPE}', network='{NETWORK}')"
+    )
     print("wlt.get_key()")
     print("wlt.info()")
 else:
     from bitcoinlib.config.config import BITCOINLIB_VERSION, BCL_DATABASE_DIR
-    online_wallet = HDWallet(WALLET_NAME, db_uri=BCL_DATABASE_DIR + '/bitcoinlib.tmp.sqlite')
+    online_wallet = HDWallet(
+        WALLET_NAME, db_uri=f'{BCL_DATABASE_DIR}/bitcoinlib.tmp.sqlite'
+    )
     online_wallet.utxos_update()
     online_wallet.info()
-    utxos = online_wallet.utxos()
-    if utxos:
+    if utxos := online_wallet.utxos():
         print("\nNew unspent outputs found!")
         print("Now a new transaction will be created to sweep this wallet and send bitcoins to a testnet faucet")
         send_to_address = 'n2eMqTT929pb1RDNuqEnxdaLau1rxy3efi'
@@ -107,12 +110,12 @@ else:
         print("Now copy-and-paste the raw transaction hex to your Offline PC and sign it there with a second signature:")
         print("\nfrom bitcoinlib.wallets import HDWallet")
         print("")
-        print("wlt = HDWallet('%s')" % WALLET_NAME)
+        print(f"wlt = HDWallet('{WALLET_NAME}')")
         print("utxos = ", end='')
         pprint(utxos)
         print("")
         print("wlt.utxos_update(utxos=utxos)")
-        print("t = wlt.transaction_import_raw('%s')" % t.raw_hex())
+        print(f"t = wlt.transaction_import_raw('{t.raw_hex()}')")
         print("t.sign()")
         print("")
         print("# Push the following raw transaction to the blockchain network on any online PC:")

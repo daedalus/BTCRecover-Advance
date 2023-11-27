@@ -76,7 +76,7 @@ class JSONRPCException(Exception):
 def EncodeDecimal(o):
     if isinstance(o, decimal.Decimal):
         return float(round(o, 8))
-    raise TypeError(repr(o) + " is not JSON serializable")
+    raise TypeError(f"{repr(o)} is not JSON serializable")
 
 
 class AuthServiceProxy(object):
@@ -86,10 +86,7 @@ class AuthServiceProxy(object):
         self.__service_url = service_url
         self.__service_name = service_name
         self.__url = urlparse.urlparse(service_url)
-        if self.__url.port is None:
-            port = 80
-        else:
-            port = self.__url.port
+        port = 80 if self.__url.port is None else self.__url.port
         (user, passwd) = (self.__url.username, self.__url.password)
         try:
             user = user.encode('utf8')
@@ -119,7 +116,7 @@ class AuthServiceProxy(object):
             # Python internal stuff
             raise AttributeError
         if self.__service_name is not None:
-            name = "%s.%s" % (self.__service_name, name)
+            name = f"{self.__service_name}.{name}"
         return AuthServiceProxy(self.__service_url, name, self.__timeout, self.__conn)
 
     def __call__(self, *args):
@@ -159,7 +156,7 @@ class AuthServiceProxy(object):
             batch_data.append({"jsonrpc": "2.0", "method": m, "params": rpc_call, "id": AuthServiceProxy.__id_count})
 
         postdata = json.dumps(batch_data, default=EncodeDecimal)
-        log.debug("--> " + postdata)
+        log.debug(f"--> {postdata}")
         self.__conn.request('POST', self.__url.path, postdata,
                             {'Host': self.__url.hostname,
                              'User-Agent': USER_AGENT,
@@ -194,5 +191,5 @@ class AuthServiceProxy(object):
         if "error" in response and response["error"] is None:
             log.debug("<-%s- %s" % (response["id"], json.dumps(response["result"], default=EncodeDecimal)))
         else:
-            log.debug("<-- " + responsedata)
+            log.debug(f"<-- {responsedata}")
         return response

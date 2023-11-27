@@ -69,8 +69,7 @@ def b58encode_int(i, default_one=True):
 def b58encode(v):
     '''Encode a string using Base58'''
     if not isinstance(v, bytes):
-        raise TypeError("a bytes-like object is required, not '%s'" %
-                        type(v).__name__)
+        raise TypeError(f"a bytes-like object is required, not '{type(v).__name__}'")
 
     origlen = len(v)
     v = v.lstrip(b'\0')

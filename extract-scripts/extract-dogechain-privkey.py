@@ -39,7 +39,7 @@ salt = base64.b64decode(data["salt"])
 
 print("Dogechain first 16 encrypted bytes, iv, and iter_count in base64:", file=sys.stderr)
 
-bytes = b"dc:" + struct.pack("< 32s 16s I", payload[0:32], salt, iter_count)
+bytes = b"dc:" + struct.pack("< 32s 16s I", payload[:32], salt, iter_count)
 crc_bytes = struct.pack("<I", zlib.crc32(bytes) & 0xffffffff)
 
 print(base64.b64encode(bytes + crc_bytes).decode())

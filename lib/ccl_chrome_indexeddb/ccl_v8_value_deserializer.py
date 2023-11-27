@@ -69,9 +69,7 @@ class _Undefined:
         return False
 
     def __eq__(self, other):
-        if isinstance(other, _Undefined):
-            return True
-        return False
+        return isinstance(other, _Undefined)
 
     def __repr__(self):
         return "<Undefined>"
@@ -279,10 +277,7 @@ class Deserializer:
 
     def _read_zigzag(self) -> int:
         unsigned = self._read_le_varint()[0]
-        if unsigned & 1:
-            return -(unsigned >> 1)
-        else:
-            return unsigned >> 1
+        return -(unsigned >> 1) if unsigned & 1 else unsigned >> 1
 
     def _read_double(self) -> float:
         return struct.unpack(f"{self._endian}d", self._read_raw(8))[0]
@@ -594,8 +589,7 @@ class Deserializer:
         tag = self._read_tag()
         if tag != Constants.token_kVersion:
             raise ValueError("Didn't get version tag in the header")
-        version = self._read_le_varint()[0]
-        return version
+        return self._read_le_varint()[0]
 
     def read(self) -> typing.Any:
         return self._read_object()

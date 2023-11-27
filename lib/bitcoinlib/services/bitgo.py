@@ -37,10 +37,10 @@ class BitGoClient(BaseClient):
 
     def compose_request(self, category, data, cmd='', variables=None, method='get'):
         if data:
-            data = '/' + data
+            data = f'/{data}'
         url_path = category + data
         if cmd != '':
-            url_path += '/' + cmd
+            url_path += f'/{cmd}'
         return self.request(url_path, variables, method=method)
 
     def getbalance(self, addresslist):
@@ -104,7 +104,7 @@ class BitGoClient(BaseClient):
             input_values = [(inp['account'], -inp['value']) for inp in tx['entries'] if inp['value'] < 0]
             if len(input_values) >= 49:
                 raise ClientError("More then 49 transaction inputs not supported by bitgo")
-            t.input_total = sum([x[1] for x in input_values])
+            t.input_total = sum(x[1] for x in input_values)
         for i in t.inputs:
             if not i.address:
                 raise ClientError("Address missing in input. Provider might not support segwit transactions")
@@ -113,8 +113,9 @@ class BitGoClient(BaseClient):
                 continue
             value = [x[1] for x in input_values if x[0] == i.address]
             if len(value) != 1:
-                _logger.info("BitGoClient: Address %s input value should be found exactly 1 times in value list" %
-                                i.address)
+                _logger.info(
+                    f"BitGoClient: Address {i.address} input value should be found exactly 1 times in value list"
+                )
                 i.value = None
             else:
                 i.value = value[0]
@@ -125,7 +126,6 @@ class BitGoClient(BaseClient):
         return t
 
     def gettransactions(self, address, after_txid='', max_txs=MAX_TRANSACTIONS):
-        txs = []
         txids = []
         skip = 0
         total = 1
@@ -143,9 +143,7 @@ class BitGoClient(BaseClient):
                 break
         if after_txid:
             txids = txids[txids.index(after_txid) + 1:]
-        for txid in txids[:max_txs]:
-            txs.append(self.gettransaction(txid))
-        return txs
+        return [self.gettransaction(txid) for txid in txids[:max_txs]]
 
     def getrawtransaction(self, txid):
         tx = self.compose_request('tx', txid)

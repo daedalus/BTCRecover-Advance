@@ -41,12 +41,25 @@ DATABASEFILE_UNITTESTS_2 = os.path.join(str(BCL_DATABASE_DIR), 'bitcoinlib.unitt
 DATABASE_NAME = 'bitcoinlib_test'
 DATABASE_NAME_2 = 'bitcoinlib2_test'
 
-db_uris = (('sqlite', 'sqlite:///' + DATABASEFILE_UNITTESTS, 'sqlite:///' + DATABASEFILE_UNITTESTS_2),)
+db_uris = (
+    (
+        'sqlite',
+        f'sqlite:///{DATABASEFILE_UNITTESTS}',
+        f'sqlite:///{DATABASEFILE_UNITTESTS_2}',
+    ),
+)
 if UNITTESTS_FULL_DATABASE_TEST:
     db_uris += (
-        ('mysql', 'mysql://root@localhost:3306/' + DATABASE_NAME, 'mysql://root@localhost:3306/' + DATABASE_NAME_2),
-        ('postgresql', 'postgresql://postgres:postgres@localhost:5432/' + DATABASE_NAME,
-         'postgresql://postgres:postgres@localhost:5432/' + DATABASE_NAME_2),
+        (
+            'mysql',
+            f'mysql://root@localhost:3306/{DATABASE_NAME}',
+            f'mysql://root@localhost:3306/{DATABASE_NAME_2}',
+        ),
+        (
+            'postgresql',
+            f'postgresql://postgres:postgres@localhost:5432/{DATABASE_NAME}',
+            f'postgresql://postgres:postgres@localhost:5432/{DATABASE_NAME_2}',
+        ),
     )
 params = (('SCHEMA', 'DATABASE_URI', 'DATABASE_URI_2'), (
     db_uris
@@ -75,7 +88,7 @@ class TestWalletMixin:
         elif cls.SCHEMA == 'mysql':
             con = mysql.connector.connect(user='root', host='localhost')
             cur = con.cursor()
-            cur.execute('CREATE DATABASE IF NOT EXISTS {}'.format(db))
+            cur.execute(f'CREATE DATABASE IF NOT EXISTS {db}')
             con.commit()
             cur.close()
             con.close()
@@ -113,8 +126,8 @@ class TestWalletMixin:
                 con = mysql.connector.connect(user='root', host='localhost', database=db, autocommit=True)
                 cur = con.cursor(buffered=True)
                 try:
-                    cur.execute("DROP DATABASE {};".format(db))
-                    cur.execute("CREATE DATABASE {};".format(db))
+                    cur.execute(f"DROP DATABASE {db};")
+                    cur.execute(f"CREATE DATABASE {db};")
                 finally:
                     cur.close()
                     con.close()
@@ -683,14 +696,14 @@ class TestWalletElectrum(TestWalletMixin, unittest.TestCase):
     def setUpClass(cls):
         cls.db_remove()
         cls.pk = 'xprv9s21ZrQH143K2fuscnMTwUadsPqEbYdFQVJ1uWPawUYi7C485NHhCiotGy6Kz3Cz7ReVr65oXNwhREZ8ePrz8p7zy' \
-                 'Hra82D1EGS7cQQmreK'
+                     'Hra82D1EGS7cQQmreK'
         cls.wallet = HDWallet.create(
             keys=cls.pk,
             name='test_wallet_electrum',
             db_uri=cls.DATABASE_URI)
         cls.wallet.key_path = ["m", "change", "address_index"]
         workdir = os.path.dirname(__file__)
-        with open('%s/%s' % (workdir, 'electrum_keys.json')) as f:
+        with open(f'{workdir}/electrum_keys.json') as f:
             cls.el_keys = json.load(f)
         for i in range(20):
             cls.wallet.key_for_path('m/0/%d' % i, name='-test- Receiving #%d' % i)
@@ -700,9 +713,11 @@ class TestWalletElectrum(TestWalletMixin, unittest.TestCase):
     def test_electrum_keys(self):
         for key in self.wallet.keys():
             if key.name[:6] == '-test-' and key.path not in ['m/0', 'm/1'] and key.path[3:] != 'm/4':
-                self.assertIn(key.address, self.el_keys.keys(),
-                              msg='Key %s (%s, %s) not found in Electrum wallet key export' %
-                                  (key.name, key.path, key.address))
+                self.assertIn(
+                    key.address,
+                    self.el_keys.keys(),
+                    msg=f'Key {key.name} ({key.path}, {key.address}) not found in Electrum wallet key export',
+                )
 
     def test_wallet_electrum_p2pkh(self):
         phrase = 'smart donor clever resource stool denial wink under oak sand limb wagon'
@@ -1088,10 +1103,7 @@ class TestWalletMultisig(TestWalletMixin, unittest.TestCase):
 
     @classmethod
     def _multisig_test(cls, sigs_required, number_of_sigs, sort_keys, network):
-        # Create Keys
-        key_dict = {}
-        for key_id in range(number_of_sigs):
-            key_dict[key_id] = HDKey(network=network)
+        key_dict = {key_id: HDKey(network=network) for key_id in range(number_of_sigs)}
         random_output_address = HDKey(network=network).address()
 
         # Create wallets with 1 private key each
@@ -1100,9 +1112,9 @@ class TestWalletMultisig(TestWalletMixin, unittest.TestCase):
         for wallet_id in range(number_of_sigs):
             wallet_name = 'multisig-%d' % wallet_id
             key_list = []
-            for key_id in key_dict:
+            for key_id, value in key_dict.items():
                 if key_id == wallet_id:
-                    key_list.append(key_dict[key_id])
+                    key_list.append(value)
                 else:
                     key_list.append(key_dict[key_id].public_master(multisig=True, as_private=True))
             wallet_dict[wallet_id] = HDWallet.create(
@@ -1112,7 +1124,7 @@ class TestWalletMultisig(TestWalletMixin, unittest.TestCase):
             wallet_dict[wallet_id].utxos_update()
 
         # Create transaction in one random wallet
-        wallet_ids = [i for i in range(0, number_of_sigs)]
+        wallet_ids = list(range(0, number_of_sigs))
         shuffle(wallet_ids)
         fee = 50000
         wallet_id = wallet_ids.pop()
@@ -1184,8 +1196,10 @@ class TestWalletMultisig(TestWalletMixin, unittest.TestCase):
             address1 = w1.new_key(cosigner_id=cosigner_id).address
             address2 = w2.new_key(cosigner_id=cosigner_id).address
             address3 = w3.new_key(cosigner_id=cosigner_id).address
-            self.assertTrue((address1 == address2 == address3),
-                            'Different addressed generated: %s %s %s' % (address1, address2, address3))
+            self.assertTrue(
+                address1 == address2 == address3,
+                f'Different addressed generated: {address1} {address2} {address3}',
+            )
 
     def test_wallet_multisig_sign_with_external_single_key(self):
         self.db_remove()
@@ -1450,7 +1464,7 @@ class TestWalletTransactions(TestWalletMixin, unittest.TestCase, CustomAssertion
         cls.wallet.utxos_update()
 
     def test_wallet_import_utxos(self):
-        total_value = sum([utxo['value'] for utxo in self.wallet.utxos()])
+        total_value = sum(utxo['value'] for utxo in self.wallet.utxos())
         self.assertEqual(total_value, 60000000)
 
     def test_wallet_transaction_export(self):
@@ -1525,7 +1539,7 @@ class TestWalletTransactions(TestWalletMixin, unittest.TestCase, CustomAssertion
                        '7834f47064c7bfd5b68cef98a61f5c4c7a8a3c6985ef137c7b3447bb62fa2324',
                        '7a4b8da2b74c71c01e1752457da715bc96807da02ec5e05d3eb4ed1dcb0c4735',
                        'b71cedddf6381c8b6eba953d5b9454b9ca41e2abbdbd9498a6c90004f649abb4']
-        tx_list = sorted(list(set([t.hash for t in w.transactions()])))
+        tx_list = sorted(list({t.hash for t in w.transactions()}))
         self.assertListEqual(tx_list, exp_tx_list)
 
     def test_wallet_two_utxos_one_key(self):

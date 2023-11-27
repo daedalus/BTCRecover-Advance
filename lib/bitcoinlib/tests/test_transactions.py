@@ -129,7 +129,7 @@ class TestTransactionOutputs(unittest.TestCase):
 class TestTransactions(unittest.TestCase):
     def setUp(self):
         workdir = os.path.dirname(__file__)
-        with open('%s/%s' % (workdir, 'transactions_raw.json'), 'r') as f:
+        with open(f'{workdir}/transactions_raw.json', 'r') as f:
             d = json.load(f)
         self.rawtxs = d['transactions']
 
@@ -137,8 +137,16 @@ class TestTransactions(unittest.TestCase):
         for r in self.rawtxs:
             # print("Deserialize %s" % r[0], r[1])
             t = Transaction.import_raw(r[1], r[4])
-            self.assertEqual(len(t.inputs), r[2], msg="Incorrect numbers of inputs for tx '%s'" % r[0])
-            self.assertEqual(len(t.outputs), r[3], msg="Incorrect numbers of outputs for tx '%s'" % r[0])
+            self.assertEqual(
+                len(t.inputs),
+                r[2],
+                msg=f"Incorrect numbers of inputs for tx '{r[0]}'",
+            )
+            self.assertEqual(
+                len(t.outputs),
+                r[3],
+                msg=f"Incorrect numbers of outputs for tx '{r[0]}'",
+            )
 
     def test_transactions_deserialize_raw_unicode(self):
         rawtx = u'01000000012ba87637d74080d041795915f843484523f7693ac1f1b359771b751acd2fef79010000006a4730440220722' \
@@ -207,13 +215,16 @@ class TestTransactions(unittest.TestCase):
             # print("Verify %s" % r[0])
             t = Transaction.import_raw(r[1], r[4])
             if len(t.inputs) < 5:
-                self.assertTrue(t.verify(), msg="Can not verify transaction '%s'" % r[0])
+                self.assertTrue(t.verify(), msg=f"Can not verify transaction '{r[0]}'")
 
     def test_transactions_serialize_raw(self):
         for r in self.rawtxs:
             t = Transaction.import_raw(r[1], r[4])
-            self.assertEqual(binascii.hexlify(t.raw()).decode(), r[1],
-                             "Deserialize / serialize error in transaction %s" % r[0])
+            self.assertEqual(
+                binascii.hexlify(t.raw()).decode(),
+                r[1],
+                f"Deserialize / serialize error in transaction {r[0]}",
+            )
 
     def test_transactions_sign_1(self):
         pk = Key('cR6pgV8bCweLX1JVN3Q1iqxXvaw4ow9rrp8RenvJcckCMEbZKNtz', network='testnet')  # Private key for import
@@ -1048,9 +1059,7 @@ class TestTransactionsScripts(unittest.TestCase, CustomAssertions):
 
     def test_transaction_redeemscript_errors(self):
         exp_error = "Redeemscripts with more then 15 keys are non-standard and could result in locked up funds"
-        keys = []
-        for n in range(20):
-            keys.append(HDKey().public_hex)
+        keys = [HDKey().public_hex for _ in range(20)]
         self.assertRaisesRegexp(TransactionError, exp_error, serialize_multisig_redeemscript, keys)
 
     def test_transaction_script_type_multisig_empty_data(self):
@@ -1171,7 +1180,7 @@ class TestTransactionsScripts(unittest.TestCase, CustomAssertions):
 
     def test_transaction_redeemscript(self):
         redeemscript = '524104a882d414e478039cd5b52a92ffb13dd5e6bd4515497439dffd691a0f12af9575fa349b5694ed3155b136f09e63975a1700c9f4d4df849323dac06cf3bd6458cd41046ce31db9bdd543e72fe3039a1f1c047dab87037c36a669ff90e28da1848f640de68c2fe913d363a51154a0c62d7adea1b822d05035077418267b1a1379790187410411ffd36c70776538d079fbae117dc38effafb33304af83ce4894589747aee1ef992f63280567f52f5ba870678b4ab4ff6c8ea600bd217870a8b4f1f09f3a8e8353ae'
-        sd = script_deserialize('00c9' + redeemscript)
+        sd = script_deserialize(f'00c9{redeemscript}')
         self.assertEqual(to_hexstring(sd['redeemscript']), redeemscript)
 
 
@@ -1401,13 +1410,6 @@ class TestTransactionsTimelocks(unittest.TestCase):
         self.assertEqual(t2.inputs[0].sequence, sequence)
 
     def test_transaction_locktime_cltv(self):
-        # timelock = 533600
-        # inputs = [
-        #     Input('0b823fca26c706c838b41749c22d01b8605068a83accac3767eaf74870106d5c', 0, locktime_cltv=timelock)]
-        # outputs = [Output(9000, '1NsKdY663CutnDvcMJdeGawMZj4SsRXWgg')]
-        # t = Transaction(inputs, outputs)
-        # TODO
-        pass
         raw_tx = ''
         # print(t.raw_hex())
         # print(t.inputs[0].unlocking_script_unsigned)

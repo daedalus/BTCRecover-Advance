@@ -36,7 +36,8 @@ wallet = ast.literal_eval(open(wallet_filename).read(64 * 2**20))  # up to 64M, 
 
 seed_version = wallet.get("seed_version")
 if seed_version is None: raise ValueError("Unrecognized wallet format (Electrum seed_version not found)")
-if seed_version != 4:    raise NotImplementedError("Unsupported Electrum seed version " + seed_version)
+if seed_version != 4:
+    raise NotImplementedError(f"Unsupported Electrum seed version {seed_version}")
 
 if not wallet.get("use_encryption"): raise ValueError("Electrum wallet is not encrypted")
 

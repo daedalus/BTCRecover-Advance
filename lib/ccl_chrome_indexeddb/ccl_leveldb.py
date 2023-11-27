@@ -64,10 +64,7 @@ def _read_le_varint(stream: typing.BinaryIO, *, is_google_32bit=False) -> typing
 def read_le_varint(stream: typing.BinaryIO, *, is_google_32bit=False) -> typing.Optional[int]:
     """Convenience version of _read_le_varint that only returns the value or None"""
     x = _read_le_varint(stream, is_google_32bit=is_google_32bit)
-    if x is None:
-        return None
-    else:
-        return x[0]
+    return None if x is None else x[0]
 
 
 def read_length_prefixed_blob(stream: typing.BinaryIO):
@@ -130,13 +127,14 @@ class Record:
 
     @property
     def user_key(self):
-        if self.file_type == FileType.Ldb:
-            if len(self.key) < 8:
-                return self.key
-            else:
-                return self.key[0:-8]
-        else:
+        if (
+            self.file_type == FileType.Ldb
+            and len(self.key) < 8
+            or self.file_type != FileType.Ldb
+        ):
             return self.key
+        else:
+            return self.key[:-8]
 
 
     @classmethod
@@ -551,7 +549,7 @@ class RawLevelDb:
             if file.is_file() and re.match(RawLevelDb.DATA_FILE_PATTERN, file.name):
                 if file.suffix.lower() == ".log":
                     self._files.append(LogFile(file))
-                elif file.suffix.lower() == ".ldb" or file.suffix.lower() == ".sst":
+                elif file.suffix.lower() in [".ldb", ".sst"]:
                     self._files.append(LdbFile(file))
             if file.is_file() and re.match(ManifestFile.MANIFEST_FILENAME_PATTERN, file.name):
                 manifest_no = int(re.match(ManifestFile.MANIFEST_FILENAME_PATTERN, file.name).group(1), 16)

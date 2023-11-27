@@ -98,9 +98,11 @@ if utxos:
     send_to_address = '2NGZrVvZG92qGYqzTLjCAewvPZ7JE8S8VxE'
     t = wallet3o5.sweep(send_to_address, min_confirms=0, offline=True)
     print("Now send the raw transaction hex to one of the other cosigners to sign using sign_raw.py")
-    print("Raw transaction: %s" % t.raw_hex())
+    print(f"Raw transaction: {t.raw_hex()}")
 else:
-    print("Please send funds to %s, so we can create a transaction" % wallet3o5.get_key().address)
+    print(
+        f"Please send funds to {wallet3o5.get_key().address}, so we can create a transaction"
+    )
     print("Restart this program when funds are send...")
 
 # Sign the transaction with 2 other cosigner keys and push the transaction

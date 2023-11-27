@@ -74,16 +74,17 @@ class LitecoindClient(BaseClient):
             config = configparser.ConfigParser(strict=False)
         else:
             config = configparser.ConfigParser()
-        config_fn = 'litecoin.conf'
         if isinstance(network, Network):
             network = network.name
-        if network == 'testnet':
-            config_fn = 'litecoin-testnet.conf'
-
         cfn = None
         if not configfile:
             config_locations = ['~/.bitcoinlib', '~/.litecoin', '~/Application Data/Litecoin',
                                 '~/Library/Application Support/Litecoin']
+            config_fn = (
+                'litecoin-testnet.conf'
+                if network == 'testnet'
+                else 'litecoin.conf'
+            )
             for location in config_locations:
                 cfn = Path(location, config_fn).expanduser()
                 if cfn.exists():
@@ -92,15 +93,14 @@ class LitecoindClient(BaseClient):
             cfn = Path(BCL_DATA_DIR, 'config', configfile)
         if not cfn or not cfn.is_file():
             raise ConfigError(
-                "Config file %s not found. Please install litecoin client and specify a path to config "
-                "file if path is not default. Or place a config file in .bitcoinlib/litecoin.conf to "
-                "reference to an external server." % cfn)
+                f"Config file {cfn} not found. Please install litecoin client and specify a path to config file if path is not default. Or place a config file in .bitcoinlib/litecoin.conf to reference to an external server."
+            )
         else:
             cfn = Path(BCL_DATA_DIR, 'config', configfile)
         if not cfn or not cfn.is_file():
-            raise ConfigError("Config file %s not found. Please install bitcoin client and specify a path to config "
-                              "file if path is not default. Or place a config file in .bitcoinlib/bitcoin.conf to "
-                              "reference to an external server." % cfn)
+            raise ConfigError(
+                f"Config file {cfn} not found. Please install bitcoin client and specify a path to config file if path is not default. Or place a config file in .bitcoinlib/bitcoin.conf to reference to an external server."
+            )
 
         try:
             config.read(cfn)
@@ -109,21 +109,17 @@ class LitecoindClient(BaseClient):
                 config_string = '[rpc]\n' + f.read()
             config.read_string(config_string)
 
-        testnet = _read_from_config(config, 'rpc', 'testnet')
-        if testnet:
+        if testnet := _read_from_config(config, 'rpc', 'testnet'):
             network = 'testnet'
         if _read_from_config(config, 'rpc', 'rpcpassword') == 'specify_rpc_password':
-            raise ConfigError("Please update config settings in %s" % cfn)
-        if network == 'testnet':
-            port = 19332
-        else:
-            port = 9332
+            raise ConfigError(f"Please update config settings in {cfn}")
+        port = 19332 if network == 'testnet' else 9332
         port = _read_from_config(config, 'rpc', 'rpcport', port)
         server = '127.0.0.1'
         server = _read_from_config(config, 'rpc', 'rpcconnect', server)
         server = _read_from_config(config, 'rpc', 'bind', server)
         server = _read_from_config(config, 'rpc', 'externalip', server)
-        url = "http://%s:%s@%s:%s" % (config.get('rpc', 'rpcuser'), config.get('rpc', 'rpcpassword'), server, port)
+        url = f"http://{config.get('rpc', 'rpcuser')}:{config.get('rpc', 'rpcpassword')}@{server}:{port}"
         return LitecoindClient(network, url)
 
     def __init__(self, network='litecoin', base_url='', denominator=100000000, *args):
@@ -150,22 +146,21 @@ class LitecoindClient(BaseClient):
         if 'password' in base_url:
             raise ConfigError("Invalid password in litecoind provider settings. "
                               "Please replace default password and set url in providers.json or litecoin.conf file")
-        _logger.info("Connect to litecoind on %s" % base_url)
+        _logger.info(f"Connect to litecoind on {base_url}")
         self.proxy = AuthServiceProxy(base_url)
         super(self.__class__, self).__init__(network, PROVIDERNAME, base_url, denominator, *args)
 
     # def getbalance
 
     def getutxos(self, address, after_txid='', max_txs=MAX_TRANSACTIONS):
-        txs = []
-
         res = self.proxy.getaddressinfo(address)
-        if not (res['ismine'] or res['iswatchonly']):
-            raise ClientError("Address %s not found in litecoind wallet, use 'importaddress' to add address to "
-                              "wallet." % address)
+        if not res['ismine'] and not res['iswatchonly']:
+            raise ClientError(
+                f"Address {address} not found in litecoind wallet, use 'importaddress' to add address to wallet."
+            )
 
-        for t in self.proxy.listunspent(0, 99999999, [address]):
-            txs.append({
+        return [
+            {
                 'address': t['address'],
                 'tx_hash': t['txid'],
                 'confirmations': t['confirmations'],
@@ -177,9 +172,9 @@ class LitecoindClient(BaseClient):
                 'value': int(t['amount'] * self.units),
                 'script': t['scriptPubKey'],
                 'date': None,
-            })
-
-        return txs
+            }
+            for t in self.proxy.listunspent(0, 99999999, [address])
+        ]
 
     def gettransaction(self, txid):
         tx = self.proxy.getrawtransaction(txid, 1)
@@ -207,8 +202,7 @@ class LitecoindClient(BaseClient):
     # def gettransactions
 
     def getrawtransaction(self, txid):
-        res = self.proxy.getrawtransaction(txid)
-        return res
+        return self.proxy.getrawtransaction(txid)
 
     def sendrawtransaction(self, rawtx):
         res = self.proxy.sendrawtransaction(rawtx)
@@ -223,7 +217,7 @@ class LitecoindClient(BaseClient):
             pres = self.proxy.estimatesmartfee(blocks)
             res = pres['feerate']
         except KeyError as e:
-            _logger.info("litecoind error: %s, %s" % (e, pres))
+            _logger.info(f"litecoind error: {e}, {pres}")
             res = self.proxy.estimatefee(blocks)
         return int(res * self.units)
 

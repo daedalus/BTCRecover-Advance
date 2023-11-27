@@ -20,8 +20,8 @@ except NameError:
 #
 
 # First recreate database to avoid already exist errors
-test_databasefile = BCL_DATABASE_DIR + 'bitcoinlib.test.sqlite'
-test_database = 'sqlite:///' + test_databasefile
+test_databasefile = f'{BCL_DATABASE_DIR}bitcoinlib.test.sqlite'
+test_database = f'sqlite:///{test_databasefile}'
 if os.path.isfile(test_databasefile):
     os.remove(test_databasefile)
 

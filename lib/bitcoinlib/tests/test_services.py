@@ -69,21 +69,21 @@ class TestService(unittest.TestCase, CustomAssertions):
 
     def test_service_sendrawtransaction(self):
         raw_tx = \
-         '010000000108004b4c0394a211d4ec0d344b70bf1e3b1ce1731d11d1d30279ab0c0f6d9fd7000000006c493046022100ab18a72f7' \
-         '87e4c8ea5d2f983b99df28d27e13482b91fd6d48701c055af92f525022100d1c26b8a779896a53a026248388896501e724e46407f' \
-         '14a4a1b6478d3293da24012103e428723c145e61c35c070da86faadaf0fab21939223a5e6ce3e1cfd76bad133dffffffff0240420' \
-         'f00000000001976a914bbaeed8a02f64c9d40462d323d379b8f27ad9f1a88ac905d1818000000001976a914046858970a72d33817' \
-         '474c0e24e530d78716fc9c88ac00000000'
+             '010000000108004b4c0394a211d4ec0d344b70bf1e3b1ce1731d11d1d30279ab0c0f6d9fd7000000006c493046022100ab18a72f7' \
+             '87e4c8ea5d2f983b99df28d27e13482b91fd6d48701c055af92f525022100d1c26b8a779896a53a026248388896501e724e46407f' \
+             '14a4a1b6478d3293da24012103e428723c145e61c35c070da86faadaf0fab21939223a5e6ce3e1cfd76bad133dffffffff0240420' \
+             'f00000000001976a914bbaeed8a02f64c9d40462d323d379b8f27ad9f1a88ac905d1818000000001976a914046858970a72d33817' \
+             '474c0e24e530d78716fc9c88ac00000000'
         srv = Service(network='testnet', timeout=TIMEOUT_TEST)
         try:
             srv.sendrawtransaction(raw_tx)
         except ServiceError:
             pass
         for provider in srv.errors:
-            print("Provider %s" % provider)
+            print(f"Provider {provider}")
             prov_error = str(srv.errors[provider])
             if isinstance(srv.errors[provider], Exception) or 'response [429]' in prov_error \
-                    or 'response [503]' in prov_error:
+                        or 'response [503]' in prov_error:
                 pass
             elif provider == 'blockcypher.testnet':
                 self.assertIn('has already been spent', prov_error)
@@ -95,9 +95,11 @@ class TestService(unittest.TestCase, CustomAssertions):
         srv.getbalance('15gHNr4TCKmhHDEG31L2XFNvpnEcnPSQvd')
         prev = None
         if len(srv.results) < 2:
-            self.fail("Only 1 or less service providers found, nothing to compare. Errors %s" % srv.errors)
+            self.fail(
+                f"Only 1 or less service providers found, nothing to compare. Errors {srv.errors}"
+            )
         for provider in srv.results:
-            print("Provider %s" % provider)
+            print(f"Provider {provider}")
             balance = srv.results[provider]
             if prev is not None and balance != prev:
                 self.fail("Different address balance from service providers: %d != %d" % (balance, prev))
@@ -109,9 +111,11 @@ class TestService(unittest.TestCase, CustomAssertions):
         srv.getbalance('Lct7CEpiN7e72rUXmYucuhqnCy5F5Vc6Vg')
         prev = None
         if len(srv.results) < 2:
-            self.fail("Only 1 or less service providers found, nothing to compare. Errors %s" % srv.errors)
+            self.fail(
+                f"Only 1 or less service providers found, nothing to compare. Errors {srv.errors}"
+            )
         for provider in srv.results:
-            print("Provider %s" % provider)
+            print(f"Provider {provider}")
             balance = srv.results[provider]
             if prev is not None and balance != prev:
                 self.fail("Different address balance from service providers: %d != %d" % (balance, prev))
@@ -125,7 +129,7 @@ class TestService(unittest.TestCase, CustomAssertions):
         exp_dict = {'cryptoid.litecoin.legacy': 95510000, 'litecoreio.litecoin.legacy': 95510000}
         for r in srv.results:
             if r not in exp_dict:
-                print("WARNING: Provider %s not found in results" % r)
+                print(f"WARNING: Provider {r} not found in results")
             self.assertEqual(srv.results[r], exp_dict[r])
 
     def test_service_get_utxos(self):
@@ -139,7 +143,7 @@ class TestService(unittest.TestCase, CustomAssertions):
         srv = Service(min_providers=10, timeout=TIMEOUT_TEST)
         srv.getutxos('1Mxww5Q2AK3GxG4R2KyCEao6NJXyoYgyAx')
         for provider in srv.results:
-            print("Provider %s" % provider)
+            print(f"Provider {provider}")
             self.assertDictEqualExt(srv.results[provider][0], expected_dict, ['date', 'block_height'])
 
     def test_service_get_utxos_after_txid(self):
@@ -148,7 +152,7 @@ class TestService(unittest.TestCase, CustomAssertions):
         srv.getutxos('1HLoD9E4SDFFPDiYfNYnkBLQ85Y51J3Zb1',
                      after_txid='9293869acee7d90661ee224135576b45b4b0dbf2b61e4ce30669f1099fecac0c')
         for provider in srv.results:
-            print("Testing provider %s" % provider)
+            print(f"Testing provider {provider}")
             self.assertEqual(srv.results[provider][0]['tx_hash'], tx_hash)
 
     def test_service_get_utxos_litecoin(self):
@@ -156,7 +160,7 @@ class TestService(unittest.TestCase, CustomAssertions):
         srv.getutxos('Lct7CEpiN7e72rUXmYucuhqnCy5F5Vc6Vg')
         tx_hash = '832518d58e9678bcdb9fe0e417a138daeb880c3a2ee1fb1659f1179efc383c25'
         for provider in srv.results:
-            print("Provider %s" % provider)
+            print(f"Provider {provider}")
             self.assertEqual(srv.results[provider][0]['tx_hash'], tx_hash)
 
     def test_service_get_utxos_litecoin_after_txid(self):
@@ -165,21 +169,23 @@ class TestService(unittest.TestCase, CustomAssertions):
         srv.getutxos('Lfx4mFjhRvqyRKxXKqn6jyb17D6NDmosEV',
                      after_txid='b328a91dd15b8b82fef5b01738aaf1f486223d34ee54357e1430c22e46ddd04e')
         for provider in srv.results:
-            print("Comparing provider %s" % provider)
+            print(f"Comparing provider {provider}")
             self.assertEqual(srv.results[provider][0]['tx_hash'], tx_hash)
 
     def test_service_estimatefee(self):
         srv = Service(min_providers=5, timeout=TIMEOUT_TEST)
         srv.estimatefee()
         if len(srv.results) < 2:
-            self.fail("Only 1 or less service providers found, no fee estimates to compare. Errors %s" % srv.errors)
+            self.fail(
+                f"Only 1 or less service providers found, no fee estimates to compare. Errors {srv.errors}"
+            )
         feelist = list(srv.results.values())
         average_fee = sum(feelist) / float(len(feelist))
 
         # Normalize with dust amount, to avoid errors on small differences
         dust = Network().dust_amount
         for provider in srv.results:
-            print("Provider %s" % provider)
+            print(f"Provider {provider}")
             if srv.results[provider] < average_fee and average_fee - srv.results[provider] > dust:
                 srv.results[provider] += dust
             elif srv.results[provider] > average_fee and srv.results[provider] - average_fee > dust:
@@ -188,7 +194,7 @@ class TestService(unittest.TestCase, CustomAssertions):
         for provider in srv.results:
             value = srv.results[provider]
             if not value:
-                self.fail("Provider '%s' returns fee estimate of zero" % provider)
+                self.fail(f"Provider '{provider}' returns fee estimate of zero")
             fee_difference_from_average = (abs(value - average_fee) / average_fee)
             if fee_difference_from_average > MAXIMUM_ESTIMATED_FEE_DIFFERENCE:
                 self.fail("Estimated fee of provider '%s' is %.1f%% different from average fee" %
@@ -238,23 +244,32 @@ class TestService(unittest.TestCase, CustomAssertions):
         srv = Service(min_providers=5, timeout=TIMEOUT_TEST)
         srv.gettransactions(address)
         for provider in srv.results:
-            print("Testing: %s" % provider)
+            print(f"Testing: {provider}")
             res = srv.results[provider]
             t = [r for r in res if r.hash == tx_hash][0]
 
             # Compare transaction
             if t.block_height:
-                self.assertEqual(t.block_height, block_height,
-                                 msg="Unexpected block height for %s provider" % provider)
+                self.assertEqual(
+                    t.block_height,
+                    block_height,
+                    msg=f"Unexpected block height for {provider} provider",
+                )
             self.assertEqual(t.input_total, input_total, msg="Unexpected input_total %d for %s provider" % (
                 t.input_total, provider))
-            self.assertEqual(t.fee, fee, msg="Unexpected fee for %s provider" % provider)
+            self.assertEqual(t.fee, fee, msg=f"Unexpected fee for {provider} provider")
             self.assertEqual(t.output_total, output_total, msg="Unexpected output_total %d for %s provider" % (
                 t.output_total, provider))
 
-            self.assertEqual(t.status, status, msg="Unexpected status for %s provider" % provider)
+            self.assertEqual(
+                t.status, status, msg=f"Unexpected status for {provider} provider"
+            )
             if t.size:
-                self.assertEqual(t.size, size, msg="Unexpected transaction size for %s provider" % provider)
+                self.assertEqual(
+                    t.size,
+                    size,
+                    msg=f"Unexpected transaction size for {provider} provider",
+                )
 
             # Remove extra field from input dict and compare inputs and outputs
             r_inputs = [
@@ -265,8 +280,16 @@ class TestService(unittest.TestCase, CustomAssertions):
             if provider in ['blockchaininfo']:  # Some providers do not provide previous hashes
                 r_inputs[0]['prev_hash'] = '4cb83c6611df40118c39a471419887a2a0aad42fc9e41d8c8790a18d6bd7daef'
                 r_inputs[2]['prev_hash'] = 'fa422d9fbac6a344af5656325acde172cd5714ebddd2f35068d3f265095add52'
-            self.assertEqual(r_inputs[0], input0, msg="Unexpected transaction input values for %s provider" % provider)
-            self.assertEqual(r_inputs[2], input2, msg="Unexpected transaction input values for %s provider" % provider)
+            self.assertEqual(
+                r_inputs[0],
+                input0,
+                msg=f"Unexpected transaction input values for {provider} provider",
+            )
+            self.assertEqual(
+                r_inputs[2],
+                input2,
+                msg=f"Unexpected transaction input values for {provider} provider",
+            )
 
     def test_service_gettransactions_after_txid(self):
         res = Service(timeout=TIMEOUT_TEST).\
@@ -392,7 +415,7 @@ class TestService(unittest.TestCase, CustomAssertions):
         srv.gettransaction('2ae77540ec3ef7b5001de90194ed0ade7522239fe0fc57c12c772d67274e2700')
 
         for provider in srv.results:
-            print("Comparing provider %s" % provider)
+            print(f"Comparing provider {provider}")
             self.assertDictEqualExt(srv.results[provider].as_dict(), expected_dict,
                                     ['block_hash', 'block_height', 'spent', 'value'])
 
@@ -430,7 +453,7 @@ class TestService(unittest.TestCase, CustomAssertions):
         # Get transactions by hash
         srv.gettransaction('885042c885dc0d44167ce71ce82bb28b09bdd8445b7639ea96a5f5be8ceba4cf')
         for provider in srv.results:
-            print("Comparing provider %s" % provider)
+            print(f"Comparing provider {provider}")
             self.assertDictEqualExt(srv.results[provider].as_dict(), expected_dict,
                                     ['block_hash', 'block_height', 'spent', 'value'])
 
@@ -454,24 +477,33 @@ class TestService(unittest.TestCase, CustomAssertions):
         srv = Service(min_providers=5, network='litecoin', timeout=TIMEOUT_TEST)
         srv.gettransactions(address)
         for provider in srv.results:
-            print("Provider %s" % provider)
+            print(f"Provider {provider}")
             res = srv.results[provider]
             txs = [r for r in res if r.hash == tx_hash]
             t = txs[0]
 
             # Compare transaction
             if t.block_height:
-                self.assertEqual(t.block_height, block_height,
-                                 msg="Unexpected block height for %s provider" % provider)
+                self.assertEqual(
+                    t.block_height,
+                    block_height,
+                    msg=f"Unexpected block height for {provider} provider",
+                )
             self.assertEqual(t.input_total, input_total, msg="Unexpected input_total %d for %s provider" % (
                 t.input_total, provider))
-            self.assertEqual(t.fee, fee, msg="Unexpected fee for %s provider" % provider)
+            self.assertEqual(t.fee, fee, msg=f"Unexpected fee for {provider} provider")
             self.assertEqual(t.output_total, output_total, msg="Unexpected output_total %d for %s provider" % (
                 t.output_total, provider))
 
-            self.assertEqual(t.status, status, msg="Unexpected status for %s provider" % provider)
+            self.assertEqual(
+                t.status, status, msg=f"Unexpected status for {provider} provider"
+            )
             if t.size:
-                self.assertEqual(t.size, size, msg="Unexpected transaction size for %s provider" % provider)
+                self.assertEqual(
+                    t.size,
+                    size,
+                    msg=f"Unexpected transaction size for {provider} provider",
+                )
 
             # Remove extra field from input dict and compare inputs and outputs
             r_inputs = [
@@ -481,7 +513,11 @@ class TestService(unittest.TestCase, CustomAssertions):
             if provider in ['blockchaininfo']:  # Some providers do not provide previous hashes
                 r_inputs[0]['prev_hash'] = '4cb83c6611df40118c39a471419887a2a0aad42fc9e41d8c8790a18d6bd7daef'
                 r_inputs[2]['prev_hash'] = 'fa422d9fbac6a344af5656325acde172cd5714ebddd2f35068d3f265095add52'
-            self.assertEqual(r_inputs[0], input0, msg="Unexpected transaction input values for %s provider" % provider)
+            self.assertEqual(
+                r_inputs[0],
+                input0,
+                msg=f"Unexpected transaction input values for {provider} provider",
+            )
 
     def test_service_gettransaction_coinbase(self):
         expected_dict = {
@@ -530,7 +566,7 @@ class TestService(unittest.TestCase, CustomAssertions):
         srv.gettransaction('68104dbd6819375e7bdf96562f89290b41598df7b002089ecdd3c8d999025b13')
 
         for provider in srv.results:
-            print("Comparing provider %s" % provider)
+            print(f"Comparing provider {provider}")
             self.assertDictEqualExt(srv.results[provider].as_dict(), expected_dict,
                                     ['block_hash', 'block_height', 'spent', 'value', 'flag'])
 

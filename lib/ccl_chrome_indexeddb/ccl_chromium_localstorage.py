@@ -238,10 +238,7 @@ class LocalStoreDb:
             return None
         start = self._batch_starts[i]
         batch = self._batches[start]
-        if batch.start <= seq <= batch.end:
-            return batch
-        else:
-            return None
+        return batch if batch.start <= seq <= batch.end else None
 
     def iter_all_records(self) -> typing.Iterable[LocalStorageRecord]:
         """

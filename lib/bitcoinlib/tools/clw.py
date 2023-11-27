@@ -143,13 +143,15 @@ def create_wallet(wallet_name, args, db_uri):
         try:
             sigs_total = int(args.create_multisig[0])
         except ValueError:
-            clw_exit("Number of total signatures (first argument) must be a numeric value. %s" %
-                     args.create_multisig[0])
+            clw_exit(
+                f"Number of total signatures (first argument) must be a numeric value. {args.create_multisig[0]}"
+            )
         try:
             sigs_required = int(args.create_multisig[1])
         except ValueError:
-            clw_exit("Number of signatures required (second argument) must be a numeric value. %s" %
-                     args.create_multisig[1])
+            clw_exit(
+                f"Number of signatures required (second argument) must be a numeric value. {args.create_multisig[1]}"
+            )
         key_list = args.create_multisig[2:]
         keys_missing = sigs_total - len(key_list)
         assert(keys_missing >= 0)
@@ -192,7 +194,7 @@ def create_transaction(wlt, send_args, args):
         try:
             amount = int(send_args[1])
         except ValueError:
-            clw_exit("Amount must be a integer value: %s" % send_args[1])
+            clw_exit(f"Amount must be a integer value: {send_args[1]}")
         output_arr.append((send_args[0], amount))
         send_args = send_args[2:]
     return wlt.transaction_create(output_arr=output_arr, network=args.network, fee=args.fee, min_confirms=0)

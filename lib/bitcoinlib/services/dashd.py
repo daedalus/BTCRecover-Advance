@@ -85,7 +85,7 @@ class DashdClient(BaseClient):
         else:
             cfn = os.path.join(BCL_DATA_DIR, 'config', configfile)
             if not os.path.isfile(cfn):
-                raise ConfigError("Config file %s not found" % cfn)
+                raise ConfigError(f"Config file {cfn} not found")
         with open(cfn, 'r') as f:
             config_string = '[rpc]\n' + f.read()
         config.read_string(config_string)
@@ -96,20 +96,17 @@ class DashdClient(BaseClient):
         except configparser.NoOptionError:
             pass
         if config.get('rpc', 'rpcpassword') == 'specify_rpc_password':
-            raise ConfigError("Please update config settings in %s" % cfn)
+            raise ConfigError(f"Please update config settings in {cfn}")
         try:
             port = config.get('rpc', 'port')
         except configparser.NoOptionError:
-            if network == 'testnet':
-                port = 19998
-            else:
-                port = 9998
+            port = 19998 if network == 'testnet' else 9998
         server = '127.0.0.1'
         if 'bind' in config['rpc']:
             server = config.get('rpc', 'bind')
         elif 'externalip' in config['rpc']:
             server = config.get('rpc', 'externalip')
-        url = "http://%s:%s@%s:%s" % (config.get('rpc', 'rpcuser'), config.get('rpc', 'rpcpassword'), server, port)
+        url = f"http://{config.get('rpc', 'rpcuser')}:{config.get('rpc', 'rpcpassword')}@{server}:{port}"
         return DashdClient(network, url)
 
     def __init__(self, network='dash', base_url='', denominator=100000000, *args):
@@ -133,7 +130,7 @@ class DashdClient(BaseClient):
         if 'password' in base_url:
             raise ConfigError("Invalid password 'password' in dashd provider settings. "
                               "Please set password and url in providers.json file")
-        _logger.info("Connect to dashd on %s" % base_url)
+        _logger.info(f"Connect to dashd on {base_url}")
         self.proxy = AuthServiceProxy(base_url)
         super(self.__class__, self).__init__(network, PROVIDERNAME, base_url, denominator, *args)
 
@@ -155,8 +152,7 @@ class DashdClient(BaseClient):
         return t
 
     def getrawtransaction(self, txid):
-        res = self.proxy.getrawtransaction(txid)
-        return res
+        return self.proxy.getrawtransaction(txid)
 
     def sendrawtransaction(self, rawtx):
         res = self.proxy.sendrawtransaction(rawtx)
@@ -176,10 +172,8 @@ class DashdClient(BaseClient):
         return self.proxy.getblockcount()
 
     def getutxos(self, address, after_txid='', max_txs=MAX_TRANSACTIONS):
-        txs = []
-
-        for t in self.proxy.listunspent(0, 99999999, [address]):
-            txs.append({
+        return [
+            {
                 'address': t['address'],
                 'tx_hash': t['txid'],
                 'confirmations': t['confirmations'],
@@ -191,9 +185,9 @@ class DashdClient(BaseClient):
                 'value': int(t['amount'] * self.units),
                 'script': t['scriptPubKey'],
                 'date': None,
-            })
-
-        return txs
+            }
+            for t in self.proxy.listunspent(0, 99999999, [address])
+        ]
 
 if __name__ == '__main__':
     #

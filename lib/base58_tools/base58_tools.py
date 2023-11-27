@@ -39,7 +39,7 @@ def b58encode_int(
     Encode an integer using Base58
     """
     if not i and default_one:
-        return alphabet[0:1]
+        return alphabet[:1]
     string = b""
     while i:
         i, idx = divmod(i, 58)
@@ -62,7 +62,7 @@ def b58encode(
     acc = int.from_bytes(v, byteorder='big')  # first byte is most significant
 
     result = b58encode_int(acc, default_one=False, alphabet=alphabet)
-    return alphabet[0:1] * (origlen - newlen) + result
+    return alphabet[:1] * (origlen - newlen) + result
 
 
 @lru_cache()
@@ -116,7 +116,7 @@ def b58decode(
     v = scrub_input(v)
 
     origlen = len(v)
-    v = v.lstrip(alphabet[0:1])
+    v = v.lstrip(alphabet[:1])
     newlen = len(v)
 
     acc = b58decode_int(v, alphabet=alphabet, autofix=autofix)

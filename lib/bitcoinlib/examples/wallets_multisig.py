@@ -11,8 +11,8 @@ import os
 from pprint import pprint
 from bitcoinlib.wallets import *
 
-test_databasefile = BCL_DATABASE_DIR + 'bitcoinlib.test.sqlite'
-test_database = 'sqlite:///' + test_databasefile
+test_databasefile = f'{BCL_DATABASE_DIR}bitcoinlib.test.sqlite'
+test_database = f'sqlite:///{test_databasefile}'
 if os.path.isfile(test_databasefile):
     os.remove(test_databasefile)
 
@@ -83,10 +83,7 @@ nk2 = wl2.new_key(cosigner_id=0)
 
 # Create a transaction
 wl1.utxos_update()
-utxos = wl1.utxos()
-if not utxos:
-    print("Deposit testnet bitcoin to this address to create transaction: ", nk1.address)
-else:
+if utxos := wl1.utxos():
     print("Utxo found, sweep address to testnet faucet address")
     res = wl1.sweep('mwCwTceJvYV27KXBc3NJZys6CjsgsoeHmf', min_confirms=0)
     assert res.hash
@@ -97,6 +94,8 @@ else:
     print("Push transaction result: ", t2.send())
 
 
+else:
+    print("Deposit testnet bitcoin to this address to create transaction: ", nk1.address)
 #
 # Multisig wallet using single keys for cosigner wallet instead of BIP32 type key structures
 #
@@ -122,7 +121,9 @@ t = wl2.transaction_create([('23Gd1mfrqgaYiPGkMm5n5UDRkCxruDAA8wo', 5000000)])
 t.sign()
 t2 = wl1.transaction_import(t)
 t2.sign()
-print("%s == %s: %s" % (t.outputs[1].address, t2.outputs[1].address, t.outputs[1].address == t2.outputs[1].address))
+print(
+    f"{t.outputs[1].address} == {t2.outputs[1].address}: {t.outputs[1].address == t2.outputs[1].address}"
+)
 print("Verified (True): ", t2.verify())
 
 

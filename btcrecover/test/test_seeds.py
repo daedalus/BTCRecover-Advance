@@ -185,7 +185,7 @@ class TestRecoveryFromMPK(unittest.TestCase):
     def mpk_tester(self, wallet_type, the_mpk, correct_mnemonic, test_path=None, **kwds):
 
         # Don't call the wallet create with a path parameter if we don't have to. (for the same of compatibility across wallet types)
-        if test_path == None:
+        if test_path is None:
             wallet = wallet_type.create_from_params(mpk=the_mpk)
         else:
             wallet = wallet_type.create_from_params(mpk=the_mpk, path=[test_path])
@@ -377,10 +377,10 @@ class TestRecoveryFromAddress(unittest.TestCase):
                        pathlist_file=None, addr_start_index = 0, force_p2sh = False, **kwds):
 
         if pathlist_file:
-            test_path = btcrseed.load_pathlist("./derivationpath-lists/" + pathlist_file)
+            test_path = btcrseed.load_pathlist(f"./derivationpath-lists/{pathlist_file}")
 
         # Don't call the wallet create with a path parameter if we don't have to. (for the same of compatibility across wallet types)
-        if test_path == None:
+        if test_path is None:
             wallet = wallet_type.create_from_params(addresses=[the_address],
                                                     address_limit=the_address_limit,
                                                     address_start_index=addr_start_index,
@@ -407,7 +407,7 @@ class TestRecoveryFromAddress(unittest.TestCase):
 
         if the_address_limit > 1:
             # Make sure the address_limit is respected (note the "the_address_limit-1" below)
-            if test_path == None:
+            if test_path is None:
                 wallet = wallet_type.create_from_params(addresses=[the_address], address_limit=the_address_limit - 1)
             else:
                 wallet = wallet_type.create_from_params(addresses=[the_address], address_limit=the_address_limit - 1,
@@ -1245,13 +1245,19 @@ class TestRecoveryFromAddress(unittest.TestCase):
 class OpenCL_Tests(unittest.TestSuite):
     def __init__(self):
         super(OpenCL_Tests, self).__init__()
-        self.addTest(unittest.defaultTestLoader.loadTestsFromNames(("TestRecoveryFromAddress." + method_name
-                                                                    for method_name in (
-                                                                        "test_BIP39_BTC_OpenCL_Brute",
-                                                                        "test_BIP39_Eth_OpenCL_Brute",
-                                                                        "test_Electrum_OpenCL_Brute")),
-                                                                   module=sys.modules[__name__]
-                                                                   ))
+        self.addTest(
+            unittest.defaultTestLoader.loadTestsFromNames(
+                (
+                    f"TestRecoveryFromAddress.{method_name}"
+                    for method_name in (
+                        "test_BIP39_BTC_OpenCL_Brute",
+                        "test_BIP39_Eth_OpenCL_Brute",
+                        "test_Electrum_OpenCL_Brute",
+                    )
+                ),
+                module=sys.modules[__name__],
+            )
+        )
 
 
 class TestAddressSet(unittest.TestCase):
@@ -1309,12 +1315,21 @@ class TestAddressSet(unittest.TestCase):
         aset = AddressSet(1024, bytes_per_addr=8)
         rand_byte_count = aset._hash_bytes + aset._bytes_per_addr
         nonrand_prefix = (20 - rand_byte_count) * "\0"
-        for i in range(aset._max_len):
-            aset.add(nonrand_prefix + "".join(chr(random.randrange(256)) for i in range(rand_byte_count)))
-        for i in range(8192):
+        for _ in range(aset._max_len):
+            aset.add(
+                nonrand_prefix
+                + "".join(
+                    chr(random.randrange(256)) for _ in range(rand_byte_count)
+                )
+            )
+        for _ in range(8192):
             self.assertNotIn(
-                nonrand_prefix + "".join(chr(random.randrange(256)) for i in range(rand_byte_count)),
-                aset)
+                nonrand_prefix
+                + "".join(
+                    chr(random.randrange(256)) for _ in range(rand_byte_count)
+                ),
+                aset,
+            )
 
     def test_file(self):
         aset = AddressSet(self.TABLE_LEN)
@@ -1374,12 +1389,18 @@ class TestRecoveryFromAddressDB(unittest.TestCase):
         assert the_address_limit > 1
 
         # Check to see if the AddressDB exists (and if not, skip)
-        if not os.path.isfile("./btcrecover/test/test-addressdbs/" + test_address_db):
-            raise unittest.SkipTest("requires ./btcrecover/test/test-addressdbs/" + test_address_db)
+        if not os.path.isfile(
+            f"./btcrecover/test/test-addressdbs/{test_address_db}"
+        ):
+            raise unittest.SkipTest(
+                f"requires ./btcrecover/test/test-addressdbs/{test_address_db}"
+            )
 
         # Test Basic BIP44 AddressDB Search
-        addressdb = AddressSet.fromfile(open("./btcrecover/test/test-addressdbs/" + test_address_db, "rb"),
-                                        preload=False)
+        addressdb = AddressSet.fromfile(
+            open(f"./btcrecover/test/test-addressdbs/{test_address_db}", "rb"),
+            preload=False,
+        )
         wallet = wallet_type.create_from_params(hash160s=addressdb, address_limit=the_address_limit, path=[test_path])
 
         # Convert the mnemonic string into a mnemonic_ids_guess
@@ -1593,13 +1614,19 @@ class TestRecoverySeedListsGenerators(unittest.TestCase):
         if correct_seedlist is None:
             correct_seedlist = self.expected_passwordlist
         # Check to see if the Seed List file exists (and if not, skip)
-        if not os.path.isfile("./btcrecover/test/test-listfiles/" + seedlistfile):
-            raise unittest.SkipTest("requires ./btcrecover/test/test-listfiles/" + seedlistfile)
+        if not os.path.isfile(f"./btcrecover/test/test-listfiles/{seedlistfile}"):
+            raise unittest.SkipTest(
+                f"requires ./btcrecover/test/test-listfiles/{seedlistfile}"
+            )
 
         args = " --listpass --seedgenerator".split()
 
-        btcrpass.parse_arguments(["--passwordlist"] + ["./btcrecover/test/test-listfiles/" + seedlistfile] + args,
-                                 disable_security_warning_param=True)
+        btcrpass.parse_arguments(
+            ["--passwordlist"]
+            + [f"./btcrecover/test/test-listfiles/{seedlistfile}"]
+            + args,
+            disable_security_warning_param=True,
+        )
         pwl_it, skipped = btcrpass.password_generator_factory(sys.maxsize)
         generated_passwords = list(pwl_it)
         self.assertEqual(generated_passwords, correct_seedlist)
@@ -1625,13 +1652,19 @@ class TestRecoverySeedListsGenerators(unittest.TestCase):
         if correct_seedlist is None:
             correct_seedlist = self.expected_passwordlist
         # Check to see if the Token List file exists (and if not, skip)
-        if not os.path.isfile("./btcrecover/test/test-listfiles/" + tokenlistfile):
-            raise unittest.SkipTest("requires ./btcrecover/test/test-listfiles/" + tokenlistfile)
+        if not os.path.isfile(f"./btcrecover/test/test-listfiles/{tokenlistfile}"):
+            raise unittest.SkipTest(
+                f"requires ./btcrecover/test/test-listfiles/{tokenlistfile}"
+            )
 
         args = " --listpass --seedgenerator --max-tokens 12 --min-tokens 12".split()
 
-        btcrpass.parse_arguments(["--tokenlist"] + ["./btcrecover/test/test-listfiles/" + tokenlistfile] + args,
-                                 disable_security_warning_param=True)
+        btcrpass.parse_arguments(
+            ["--tokenlist"]
+            + [f"./btcrecover/test/test-listfiles/{tokenlistfile}"]
+            + args,
+            disable_security_warning_param=True,
+        )
         tok_it, skipped = btcrpass.password_generator_factory(sys.maxsize)
         generated_passwords = list(tok_it)
         self.assertEqual(generated_passwords, correct_seedlist)

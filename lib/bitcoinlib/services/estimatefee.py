@@ -30,7 +30,7 @@ class EstimateFeeClient(BaseClient):
         super(self.__class__, self).__init__(network, PROVIDERNAME, base_url, denominator, *args)
 
     def compose_request(self, cmd, parameter, method='get'):
-        url_path = cmd + '/' + parameter
+        url_path = f'{cmd}/{parameter}'
         res = self.request(url_path, method=method)
         return int(float(res) * self.units)
 

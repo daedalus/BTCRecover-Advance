@@ -36,22 +36,22 @@ wallet_conn = sqlite3.connect(vault_filename)
 wallet_conn.row_factory = sqlite3.Row
 select = "SELECT * FROM Keychain"
 if keychain_name:
-    wallet_cur = wallet_conn.execute(select + " WHERE name LIKE '%' || ? || '%'", (keychain_name,))
+    wallet_cur = wallet_conn.execute(
+        f"{select} WHERE name LIKE '%' || ? || '%'", (keychain_name,)
+    )
 else:
     wallet_cur = wallet_conn.execute(select)
 keychain = wallet_cur.fetchone()
 if not keychain:
     sys.exit("no such keychain found in the mSIGNA vault")
 
-# If there are multiple matching keychains, give up
-keychain_extra = wallet_cur.fetchone()
-if keychain_extra:
+if keychain_extra := wallet_cur.fetchone():
     print("Multiple matching keychains found in the mSIGNA vault:", file=sys.stderr)
     print("  ", keychain["name"])
     print("  ", keychain_extra["name"])
     for keychain_extra in wallet_cur:
         print("  ", keychain_extra["name"])
-    sys.exit("Please specify the keychain name as the second argument to " + prog)
+    sys.exit(f"Please specify the keychain name as the second argument to {prog}")
 
 wallet_conn.close()
 

@@ -12,9 +12,7 @@ from bitcoinlib.transactions import *
 
 
 print("\n===  Example of a basic raw transaction with 1 input and 2 outputs (destination and change address). ===")
-rt = '01000000'  # Version bytes in Little-Endian (reversed) format
-# --- INPUTS ---
-rt += '01'  # Number of UTXO's inputs
+rt = '01000000' + '01'
 # Previous transaction hash (Little Endian format):
 rt += 'a3919372c9807d92507289d71bdd38f10682a49c47e50dc0136996b43d8aa54e'
 rt += '01000000'  # Index number of previous transaction
@@ -49,5 +47,5 @@ t = Transaction.import_raw(rt)
 pprint(t.as_dict())
 output_script = t.outputs[0].lock_script
 print("\nOutput 1st Script Type: %s " % script_deserialize(output_script)['script_type'])
-print("Output 1st Script String: %s" % script_to_string(output_script))
+print(f"Output 1st Script String: {script_to_string(output_script)}")
 print("\nt.verified() ==> %s" % t.verify())

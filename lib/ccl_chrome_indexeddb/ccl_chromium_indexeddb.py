@@ -66,10 +66,7 @@ def _read_le_varint(stream: typing.BinaryIO, *, is_google_32bit=False):
 
 def read_le_varint(stream: typing.BinaryIO, *, is_google_32bit=False):
     x = _read_le_varint(stream, is_google_32bit=is_google_32bit)
-    if x is None:
-        return None
-    else:
-        return x[0]
+    return None if x is None else x[0]
 
 
 def _le_varint_from_bytes(data: bytes):
@@ -107,18 +104,18 @@ class IdbKey:
             self.value = raw_key[len(varint_raw):len(varint_raw) + str_len * 2].decode("utf-16-be")
             self._raw_length = 1 + len(varint_raw) + str_len * 2
         elif self.key_type == IdbKeyType.Date:
-            ts, = struct.unpack("<d", raw_key[0:8])
+            ts, = struct.unpack("<d", raw_key[:8])
             self.value = datetime.datetime(1970, 1, 1) + datetime.timedelta(milliseconds=ts)
             self._raw_length = 9
         elif self.key_type == IdbKeyType.Number:
-            self.value = struct.unpack("<d", raw_key[0:8])[0]
+            self.value = struct.unpack("<d", raw_key[:8])[0]
             self._raw_length = 9
         elif self.key_type == IdbKeyType.Array:
             array_count, varint_raw = _le_varint_from_bytes(raw_key)
             raw_key = raw_key[len(varint_raw):]
             self.value = []
             self._raw_length = 1 + len(varint_raw)
-            for i in range(array_count):
+            for _ in range(array_count):
                 key = IdbKey(raw_key)
                 raw_key = raw_key[key._raw_length:]
                 self._raw_length += key._raw_length
@@ -137,7 +134,7 @@ class IdbKey:
             raise ValueError()  # Shouldn't happen
 
         # trim the raw_key in case this is an inner key:
-        self.raw_key = self.raw_key[0: self._raw_length]
+        self.raw_key = self.raw_key[:self._raw_length]
 
     def __repr__(self):
         return f"<IdbKey {self.value}>"
@@ -440,12 +437,10 @@ class IndexedDb:
                 # read the blink envelope
                 blink_type_tag = record.value[val_idx]
                 if blink_type_tag != 0xff:
-                    # TODO: probably don't want to fail hard here long term...
-                    if bad_deserializer_data_handler is not None:
-                        bad_deserializer_data_handler(key, record.value)
-                        continue
-                    else:
+                    if bad_deserializer_data_handler is None:
                         raise ValueError("Blink type tag not present")
+                    bad_deserializer_data_handler(key, record.value)
+                    continue
                 val_idx += 1
 
                 blink_version, varint_raw = _le_varint_from_bytes(record.value[val_idx:])
@@ -560,10 +555,12 @@ class WrappedDatabase:
         self._raw_db = raw_db
         self._dbid = dbid
 
-        names = []
-        for obj_store_id in range(1, self.object_store_count + 1):
-            names.append(self._raw_db.get_object_store_metadata(
-                self.db_number, obj_store_id, ObjectStoreMetadataType.StoreName))
+        names = [
+            self._raw_db.get_object_store_metadata(
+                self.db_number, obj_store_id, ObjectStoreMetadataType.StoreName
+            )
+            for obj_store_id in range(1, self.object_store_count + 1)
+        ]
         self._obj_store_names = tuple(names)
         # pre-compile object store wrappers as there's little overhead
         self._obj_stores = tuple(
@@ -624,7 +621,9 @@ class WrappedDatabase:
 class WrappedIndexDB:
     def __init__(self, leveldb_dir: os.PathLike, leveldb_blob_dir: os.PathLike = None):
         self._raw_db = IndexedDb(leveldb_dir, leveldb_blob_dir)
-        self._multiple_origins = len(set(x.origin for x in self._raw_db.global_metadata.db_ids)) > 1
+        self._multiple_origins = (
+            len({x.origin for x in self._raw_db.global_metadata.db_ids}) > 1
+        )
 
         self._db_number_lookup = {
             x.dbid_no: WrappedDatabase(self._raw_db, x)

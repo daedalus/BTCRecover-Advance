@@ -145,16 +145,13 @@ class SessionStoreDb:
                     print(f"Raw Value: {rec.value}")
                     continue
 
-                #guid_host_pair = self._map_id_to_host_guid.get(map_id)
-                host = self._map_id_to_host.get(map_id)
-                #if not guid_host_pair:
-                if not host:
-                    self._orphans.append((ss_key, SessionStoreValue(value, None, rec.seq)))
-                else:
+                if host := self._map_id_to_host.get(map_id):
                     #guid, host = guid_host_pair
                     self._host_lookup.setdefault(host, {})
                     self._host_lookup[host].setdefault(ss_key, [])
                     self._host_lookup[host][ss_key].append(SessionStoreValue(value, None, rec.seq))
+                else:
+                    self._orphans.append((ss_key, SessionStoreValue(value, None, rec.seq)))
 
     def __contains__(self, item: typing.Union[str, typing.Tuple[str, str]]) -> bool:
         """if item is a str, returns true if that host is present
@@ -179,9 +176,7 @@ class SessionStoreDb:
         return result_raw
 
     def get_session_storage_key(self, host, key):
-        if (host, key) not in self:
-            return tuple()
-        return tuple(self._host_lookup[host][key])
+        return tuple(self._host_lookup[host][key]) if (host, key) in self else tuple()
 
     def iter_orphans(self):
         yield from self._orphans

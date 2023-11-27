@@ -20,7 +20,7 @@ pprint(bdc.proxy.getnetworkinfo())
 
 # Get latest block
 latest_block_hash = bdc.proxy.getbestblockhash()
-print("Getting latest block with hash %s" % latest_block_hash)
+print(f"Getting latest block with hash {latest_block_hash}")
 latest_block = bdc.proxy.getblock(latest_block_hash)
 transactions = latest_block['tx']
 print("Found %d transactions" % len(transactions))
@@ -28,11 +28,9 @@ print("Found %d transactions" % len(transactions))
 srv = Service(network='bitcoin')
 
 MAX_TRANSACTIONS = 100
-count = 0
 count_segwit = 0
-for txid in transactions[:MAX_TRANSACTIONS]:
+for count, txid in enumerate(transactions[:MAX_TRANSACTIONS]):
     print("\n=== Deserialize transaction #%d (segwit %d) ===" % (count, count_segwit))
-    count += 1
     t = srv.gettransaction(txid)
     t.verify()
     t.info()

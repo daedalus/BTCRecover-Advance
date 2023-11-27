@@ -30,14 +30,13 @@ class Address:
         self.payload = payload
         if prefix:
             self.prefix = prefix
+        elif Address._address_type('cash', self.version)[2]:
+            self.prefix = self.TESTNET_PREFIX
         else:
-            if Address._address_type('cash', self.version)[2]:
-                self.prefix = self.TESTNET_PREFIX
-            else:
-                self.prefix = self.MAINNET_PREFIX
+            self.prefix = self.MAINNET_PREFIX
 
     def __str__(self):
-        return 'version: {}\npayload: {}\nprefix: {}'.format(self.version, self.payload, self.prefix)
+        return f'version: {self.version}\npayload: {self.payload}\nprefix: {self.prefix}'
 
     def legacy_address(self):
         version_int = Address._address_type('legacy', self.version)[1]
@@ -48,7 +47,7 @@ class Address:
         payload = [version_int] + self.payload
         payload = convertbits(payload, 8, 5)
         checksum = calculate_checksum(self.prefix, payload)
-        return self.prefix + ':' + b32encode(payload + checksum)
+        return f'{self.prefix}:{b32encode(payload + checksum)}'
 
     @staticmethod
     def code_list_to_string(code_list):
@@ -57,9 +56,7 @@ class Address:
             for code in code_list:
                 output += bytes([code])
         else:
-            output = ''
-            for code in code_list:
-                output += chr(code)
+            output = ''.join(chr(code) for code in code_list)
         return output
 
     @staticmethod
@@ -87,9 +84,7 @@ class Address:
         except ValueError:
             raise InvalidAddress('Could not decode legacy address')
         version = Address._address_type('legacy', decoded[0])[0]
-        payload = list()
-        for letter in decoded[1:]:
-            payload.append(letter)
+        payload = list(decoded[1:])
         return Address(version, payload)
 
     @staticmethod
@@ -99,7 +94,7 @@ class Address:
         address_string = address_string.lower()
         colon_count = address_string.count(':')
         if colon_count == 0:
-            address_string = Address.MAINNET_PREFIX + ':' + address_string
+            address_string = f'{Address.MAINNET_PREFIX}:{address_string}'
         elif colon_count > 1:
             raise InvalidAddress('Cash address contains more than one colon character')
         prefix, base32string = address_string.split(':')

@@ -32,7 +32,7 @@ from sqlalchemy.orm import sessionmaker, relationship
 from bitcoinlib.main import *
 
 _logger = logging.getLogger(__name__)
-_logger.info("Using Database %s" % DEFAULT_DATABASE)
+_logger.info(f"Using Database {DEFAULT_DATABASE}")
 Base = declarative_base()
 
 
@@ -47,7 +47,7 @@ class DbInit:
     def __init__(self, databasefile=DEFAULT_DATABASE):
         if not os.path.isabs(databasefile):
             databasefile = os.path.join(BCL_DATABASE_DIR, databasefile)
-        self.engine = create_engine('sqlite:///%s' % databasefile)
+        self.engine = create_engine(f'sqlite:///{databasefile}')
         Session = sessionmaker(bind=self.engine)
 
         if not os.path.exists(databasefile):
@@ -119,7 +119,7 @@ class DbWallet(Base):
     )
 
     def __repr__(self):
-        return "<DbWallet(name='%s', network='%s'>" % (self.name, self.network_name)
+        return f"<DbWallet(name='{self.name}', network='{self.network_name}'>"
 
 
 class DbKeyMultisigChildren(Base):
@@ -185,7 +185,7 @@ class DbKey(Base):
     )
 
     def __repr__(self):
-        return "<DbKey(id='%s', name='%s', wif='%s'>" % (self.id, self.name, self.wif)
+        return f"<DbKey(id='{self.id}', name='{self.name}', wif='{self.wif}'>"
 
 
 class DbNetwork(Base):
@@ -198,7 +198,7 @@ class DbNetwork(Base):
     description = Column(String(50))
 
     def __repr__(self):
-        return "<DbNetwork(name='%s', description='%s'>" % (self.name, self.description)
+        return f"<DbNetwork(name='{self.name}', description='{self.description}'>"
 
 
 class TransactionType(enum.Enum):
@@ -249,7 +249,7 @@ class DbTransaction(Base):
     )
 
     def __repr__(self):
-        return "<DbTransaction(hash='%s', confirmations='%s')>" % (self.hash, self.confirmations)
+        return f"<DbTransaction(hash='{self.hash}', confirmations='{self.confirmations}')>"
 
 
 class DbTransactionInput(Base):

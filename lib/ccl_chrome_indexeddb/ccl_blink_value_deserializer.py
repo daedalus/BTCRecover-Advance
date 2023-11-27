@@ -159,8 +159,7 @@ class BlinkV8Deserializer:
 
     def _read_file_list_index(self, stream: typing.BinaryIO) -> typing.Iterable[BlobIndex]:
         length = self._read_varint(stream)
-        result = [self._read_file_index(stream) for _ in range(length)]
-        return result
+        return [self._read_file_index(stream) for _ in range(length)]
 
     def _not_implemented(self, stream):
         raise NotImplementedError()

@@ -44,17 +44,15 @@ class BcoinClient(BaseClient):
     def compose_request(self, func, data='', parameter='', variables=None, method='get'):
         url_path = func
         if data:
-            url_path += '/' + data
+            url_path += f'/{data}'
         if parameter:
-            url_path += '/' + parameter
+            url_path += f'/{parameter}'
         if variables is None:
             variables = {}
         return self.request(url_path, variables, method, secure=False)
 
     def _parse_transaction(self, tx):
-        status = 'unconfirmed'
-        if tx['confirmations']:
-            status = 'confirmed'
+        status = 'confirmed' if tx['confirmations'] else 'unconfirmed'
         t = Transaction.import_raw(tx['hex'])
         t.locktime = tx['locktime']
         t.network = self.network
@@ -128,15 +126,14 @@ class BcoinClient(BaseClient):
                     res = self.compose_request('tx', 'address', address, variables)
                 except ReadTimeout as e:
                     sleep(3)
-                    _logger.info("Bcoin client error: %s" % e)
+                    _logger.info(f"Bcoin client error: {e}")
                     retries += 1
                 else:
                     break
                 finally:
                     if retries == 3:
                         raise ClientError("Max retries exceeded with bcoin Client")
-            for tx in res:
-                txs.append(self._parse_transaction(tx))
+            txs.extend(self._parse_transaction(tx) for tx in res)
             if len(txs) >= max_txs:
                 break
             if len(res) == LIMIT_TX:
@@ -152,7 +149,7 @@ class BcoinClient(BaseClient):
                 for to in tx.outputs:
                     if to.address != address:
                         continue
-                    spent = True if (tx.hash, to.output_n) in address_inputs else False
+                    spent = (tx.hash, to.output_n) in address_inputs
                     txs[txs.index(tx)].outputs[to.output_n].spent = spent
         return txs
 
@@ -171,12 +168,9 @@ class BcoinClient(BaseClient):
         }
 
     def estimatefee(self, blocks):
-        if blocks > 15:
-            blocks = 15
+        blocks = min(blocks, 15)
         fee = self.compose_request('fee', variables={'blocks': blocks})['rate']
-        if not fee:
-            return False
-        return fee
+        return False if not fee else fee
 
     def blockcount(self):
         return self.compose_request('')['chain']['height']

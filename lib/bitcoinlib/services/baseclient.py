@@ -60,15 +60,15 @@ class BaseClient(object):
             if network_overrides is not None:
                 self.network_overrides = network_overrides
         except:
-            raise ClientError("This Network is not supported by %s Client" % provider)
+            raise ClientError(f"This Network is not supported by {provider} Client")
 
     def request(self, url_path, variables=None, method='get', secure=True, post_data=''):
         url_vars = ''
         url = self.base_url + url_path
         if not url or not self.base_url:
-            raise ClientError("No (complete) url provided: %s" % url)
+            raise ClientError(f"No (complete) url provided: {url}")
         headers = {
-            'User-Agent': 'BitcoinLib %s' % BITCOINLIB_VERSION,
+            'User-Agent': f'BitcoinLib {BITCOINLIB_VERSION}',
             'Accept': 'application/json',
             'Content-Type': 'application/json',
             "Referrer": "https://www.github.com/1200wd/bitcoinlib",
@@ -78,12 +78,12 @@ class BaseClient(object):
             if variables is None:
                 variables = {}
             if variables:
-                url_vars = '?' + urlencode(variables)
+                url_vars = f'?{urlencode(variables)}'
             url += url_vars
-            _logger.info("Url get request %s" % url)
+            _logger.info(f"Url get request {url}")
             self.resp = requests.get(url, timeout=self.timeout, verify=secure, headers=headers)
         elif method == 'post':
-            _logger.info("Url post request %s" % url)
+            _logger.info(f"Url post request {url}")
             self.resp = requests.post(url, json=dict(variables), data=post_data, timeout=self.timeout, verify=secure,
                                       headers=headers)
 
@@ -94,7 +94,7 @@ class BaseClient(object):
         if self.resp.status_code == 429:
             raise ClientError("Maximum number of requests reached for %s with url %s, response [%d] %s" %
                               (self.provider, url, self.resp.status_code, resp_text))
-        elif not(self.resp.status_code == 200 or self.resp.status_code == 201):
+        elif self.resp.status_code not in [200, 201]:
             raise ClientError("Error connecting to %s on url %s, response [%d] %s" %
                               (self.provider, url, self.resp.status_code, resp_text))
         try:
@@ -107,7 +107,4 @@ class BaseClient(object):
             return Address.import_address(address, network_overrides=self.network_overrides, network=self.network.name)
 
     def _addresslist_convert(self, addresslist):
-        addresslistconv = []
-        for address in addresslist:
-            addresslistconv.append(self._address_convert(address))
-        return addresslistconv
+        return [self._address_convert(address) for address in addresslist]

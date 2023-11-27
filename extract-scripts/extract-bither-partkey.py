@@ -35,8 +35,13 @@ wallet_conn = sqlite3.connect(wallet_filename)
 wallet_cur = wallet_conn.execute("SELECT encrypt_private_key FROM addresses LIMIT 1")
 key_data   = wallet_cur.fetchone()
 if not key_data:
-    sys.exit("This Bither wallet is incompatible with "+prog+" (no loose private keys found).\n" +
-             "Please run btcrecover with the wallet file directly instead.")
+    sys.exit(
+        (
+            f"This Bither wallet is incompatible with {prog}"
+            + " (no loose private keys found).\n"
+            + "Please run btcrecover with the wallet file directly instead."
+        )
+    )
 key_data = key_data[0]
 wallet_conn.close()
 
@@ -47,20 +52,22 @@ if len(key_data) == 1:
 if len(key_data) == 4:
     key_data.pop(0)  # remove the optional pubkey hash
 if len(key_data) != 3:
-    sys.exit("unrecognized Bither encrypted key format (expected 3-4 slash-delimited elements, found {})"
-             .format(len(key_data)))
+    sys.exit(
+        f"unrecognized Bither encrypted key format (expected 3-4 slash-delimited elements, found {len(key_data)})"
+    )
 privkey_ciphertext = base64.b16decode(key_data[0], casefold=True)
 salt               = base64.b16decode(key_data[2], casefold=True)
 
 if len(privkey_ciphertext) != 48:
-    sys.exit("unexpected encrypted key length in Bither wallet (expected 48, found {})"
-               .format(len(privkey_ciphertext)))
+    sys.exit(
+        f"unexpected encrypted key length in Bither wallet (expected 48, found {len(privkey_ciphertext)})"
+    )
 
 # The first salt byte is optionally a flags byte that's not needed
 if len(salt) == 9:
     salt = salt[1:]
 elif len(salt) != 8:
-    sys.exit("unexpected salt length ({}) in Bither wallet".format(len(salt)))
+    sys.exit(f"unexpected salt length ({len(salt)}) in Bither wallet")
 
 print("Bither partial encrypted private key, salt, and crc in base64:", file=sys.stderr)
 

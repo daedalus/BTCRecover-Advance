@@ -227,7 +227,9 @@ def read_config():
         if not BCL_CONFIG_FILE.exists():
             BCL_CONFIG_FILE = Path(BCL_INSTALL_DIR, 'data', config_file_name)
         if not BCL_CONFIG_FILE.exists():
-            raise IOError('Bitcoinlib configuration file not found: %s' % str(BCL_CONFIG_FILE))
+            raise IOError(
+                f'Bitcoinlib configuration file not found: {str(BCL_CONFIG_FILE)}'
+            )
     data = config.read(str(BCL_CONFIG_FILE))
     BCL_DATA_DIR = Path(config_get('locations', 'data_dir', fallback='~/.bitcoinlib')).expanduser()
 
@@ -261,9 +263,7 @@ def read_config():
         if full_db_test in [0, False, 'False', 'false', 'FALSE']:
             UNITTESTS_FULL_DATABASE_TEST = False
 
-    if not data:
-        return False
-    return True
+    return bool(data)
 
 
 # Copy data and settings to default settings directory if install.log is not found

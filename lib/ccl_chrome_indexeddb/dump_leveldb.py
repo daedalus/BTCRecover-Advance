@@ -8,10 +8,7 @@ ENCODING = "iso-8859-1"
 
 def main(args):
     input_path = args[0]
-    output_path = "leveldb_dump.csv"
-    if len(args) > 1:
-        output_path = args[1]
-
+    output_path = args[1] if len(args) > 1 else "leveldb_dump.csv"
     leveldb_records = ccl_leveldb.RawLevelDb(input_path)
 
     with open(output_path, "w", encoding="utf-8", newline="") as file1:

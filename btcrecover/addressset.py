@@ -229,8 +229,10 @@ class AddressSet(object):
         :type dbfile: io.FileIO or file
         """
         if dbfile.tell() % mmap.ALLOCATIONGRANULARITY != 0:
-            print("AddressSet: warning: if header position in file isn't a multiple of {}, it probably can't be loaded with fromfile()"
-                  .format(mmap.ALLOCATIONGRANULARITY), file=sys.stderr)
+            print(
+                f"AddressSet: warning: if header position in file isn't a multiple of {mmap.ALLOCATIONGRANULARITY}, it probably can't be loaded with fromfile()",
+                file=sys.stderr,
+            )
         if "b" not in dbfile.mode:
             raise ValueError("must open file in binary mode")
         # Windows Python 2 file objects can't handle writes >= 4GiB. Objects returned
@@ -257,7 +259,9 @@ class AddressSet(object):
             raise ValueError("must open file in binary mode")
         header_pos = dbfile.tell()
         if header_pos % mmap.ALLOCATIONGRANULARITY != 0:
-            raise ValueError("header position in file must be a multiple of {}".format(mmap.ALLOCATIONGRANULARITY))
+            raise ValueError(
+                f"header position in file must be a multiple of {mmap.ALLOCATIONGRANULARITY}"
+            )
         #
         # Read in the header safely (ast.literal_eval() is safe for untrusted data)
         header = dbfile.read(cls.HEADER_LEN)
@@ -268,8 +272,9 @@ class AddressSet(object):
         assert config_end > 0
         config = ast.literal_eval(header[magic_len:config_end].decode())
         if config["version"] != cls.VERSION:
-            raise ValueError("can't load address database version {} (only supports {})"
-                             .format(config["version"], cls.VERSION))
+            raise ValueError(
+                f"""can't load address database version {config["version"]} (only supports {cls.VERSION})"""
+            )
         #
         # Create an AddressSet object and replace its attributes
         self = cls(1)  # (size is irrelevant since it's getting replaced)
@@ -360,11 +365,13 @@ def create_address_db(dbfilename, blockdir, table_len, startBlockDate="2019-01-0
         for filename in glob.iglob(path.join(blockdir, "blk*.dat")):
             if path.isfile(filename): break
         else:
-            raise ValueError("no block files exist in blocks directory '{}'".format(blockdir))
+            raise ValueError(f"no block files exist in blocks directory '{blockdir}'")
 
         filename = "blk{:05}.dat".format(first_filenum)
         if not path.isfile(path.join(blockdir, filename)):
-            raise ValueError("first block file '{}' doesn't exist in blocks directory '{}'".format(filename, blockdir))
+            raise ValueError(
+                f"first block file '{filename}' doesn't exist in blocks directory '{blockdir}'"
+            )
 
     if not update:
         # Open the file early to make sure we can, but don't overwrite it yet
@@ -399,7 +406,7 @@ def create_address_db(dbfilename, blockdir, table_len, startBlockDate="2019-01-0
                             if (address[2:11] == 'addresses'):
                                 address = address[15:-4]
 
-                            if(address[0:2] != '0x'):
+                            if address[:2] != '0x':
                                 address_set.add(btcrecover.btcrseed.WalletBase._addresses_to_hash160s([address.rstrip()]).pop())
                             else:
                                 address_set.add(btcrecover.btcrseed.WalletEthereum._addresses_to_hash160s([address.rstrip()]).pop())
@@ -415,9 +422,8 @@ def create_address_db(dbfilename, blockdir, table_len, startBlockDate="2019-01-0
             except FileNotFoundError:
                 if multiFile:
                     continue
-                else:
-                    print("File:", addresslistfile, " not found")
-                    exit()
+                print("File:", addresslistfile, " not found")
+                exit()
 
         print("Finished AddressDB Contains", len(address_set), "Addresses")
 
@@ -482,7 +488,7 @@ def create_address_db(dbfilename, blockdir, table_len, startBlockDate="2019-01-0
                     #print()
 
                     #Get Block Header Info (Useful for debugging and limiting date range)
-                    block_version = block[0:4]
+                    block_version = block[:4]
                     block_prevHash = block[4:36]
                     block_merkleRoot = block[36:68]
                     block_time = struct.unpack("<I",block[68:72])[0]
@@ -502,20 +508,28 @@ def create_address_db(dbfilename, blockdir, table_len, startBlockDate="2019-01-0
                     blockDate = datetime.fromtimestamp(float(block_time))
 
                     #Only add addresses which occur in blocks that are within the time window we are looking at
-                    if datetime.strptime(startBlockDate + " 00:00:00", '%Y-%m-%d %H:%M:%S') <= blockDate and datetime.strptime(endBlockDate + " 23:59:59", '%Y-%m-%d %H:%M:%S') >= blockDate:
+                    if (
+                        datetime.strptime(
+                            f"{startBlockDate} 00:00:00", '%Y-%m-%d %H:%M:%S'
+                        )
+                        <= blockDate
+                        and datetime.strptime(
+                            f"{endBlockDate} 23:59:59", '%Y-%m-%d %H:%M:%S'
+                        )
+                        >= blockDate
+                    ):
 
-                        for tx_num in range(tx_count):
-
+                        for _ in range(tx_count):
                             offset += 4                                                 # skips 4-byte tx version
                             is_bip144 = block[offset] == 0                          # bip-144 marker
                             if is_bip144:
                                 offset += 2                                             # skips 1-byte marker & 1-byte flag
                             txin_count, offset = varint(block, offset)
-                            for txin_num in range(txin_count):
+                            for _ in range(txin_count):
                                 sigscript_len, offset = varint(block, offset + 36)      # skips 32-byte tx id & 4-byte tx index
                                 offset += sigscript_len + 4                             # skips sequence number & sigscript
                             txout_count, offset = varint(block, offset)
-                            for txout_num in range(txout_count):
+                            for _ in range(txout_count):
                                 pkscript_len, offset = varint(block, offset + 8)        # skips 8-byte satoshi count
 
                                 #if print_debug:
@@ -532,9 +546,9 @@ def create_address_db(dbfilename, blockdir, table_len, startBlockDate="2019-01-0
 
                                 offset += pkscript_len                                  # advances past the pubkey script
                             if is_bip144:
-                                for txin_num in range(txin_count):
+                                for _ in range(txin_count):
                                     stackitem_count, offset = varint(block, offset)
-                                    for stackitem_num in range(stackitem_count):
+                                    for _ in range(stackitem_count):
                                         stackitem_len, offset = varint(block, offset)
                                         offset += stackitem_len                         # skips this stack item
                             offset += 4                                                 # skips the 4-byte locktime

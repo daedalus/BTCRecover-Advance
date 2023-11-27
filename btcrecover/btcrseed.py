@@ -108,10 +108,7 @@ ADDRESSDB_DEF_FILENAME = "addresses.db"
 no_gui = False
 
 def full_version():
-    return "seedrecover {}, {}".format(
-        __version__,
-        btcrpass.full_version()
-    )
+    return f"seedrecover {__version__}, {btcrpass.full_version()}"
 
 
 ################################### Utility Functions ###################################
@@ -139,8 +136,8 @@ def int_to_bytes(int_rep, min_length):
     """
     assert int_rep >= 0
     hex_rep = "{:X}".format(int_rep)
-    if len(hex_rep) % 2 == 1:    # The hex decoder below requires
-        hex_rep = "0" + hex_rep  # exactly 2 chars per byte.
+    if len(hex_rep) % 2 == 1:# The hex decoder below requires
+        hex_rep = f"0{hex_rep}"
     return base64.b16decode(hex_rep).rjust(min_length, "\0".encode("utf-8"))
 
 
@@ -192,8 +189,14 @@ def base58check_to_bip32(base58_rep):
     :rtype: BIP32ExtendedKey
     """
     decoded_bytes = base58check_to_bytes(base58_rep, 4 + 1 + 4 + 4 + 32 + 33)
-    return BIP32ExtendedKey(decoded_bytes[0:4],  ord(decoded_bytes[ 4:5]), decoded_bytes[ 5:9],
-        struct.unpack(">I", decoded_bytes[9:13])[0], decoded_bytes[13:45], decoded_bytes[45:])
+    return BIP32ExtendedKey(
+        decoded_bytes[:4],
+        ord(decoded_bytes[4:5]),
+        decoded_bytes[5:9],
+        struct.unpack(">I", decoded_bytes[9:13])[0],
+        decoded_bytes[13:45],
+        decoded_bytes[45:],
+    )
 
 def compress_pubkey(uncompressed_pubkey):
     """convert an uncompressed public key into a compressed public key
@@ -208,20 +211,18 @@ def compress_pubkey(uncompressed_pubkey):
 
 
 def load_pathlist(pathlistFile):
-    pathlist_file = open(pathlistFile, "r")
-    pathlist_lines = pathlist_file.readlines()
-    pathlist = []
-    for path in pathlist_lines:
-        if path[0] == '#' or len(path.strip()) == 0:
-            continue
-        pathlist.append(path.split("#")[0].strip())
-    pathlist_file.close()
+    with open(pathlistFile, "r") as pathlist_file:
+        pathlist_lines = pathlist_file.readlines()
+        pathlist = [
+            path.split("#")[0].strip()
+            for path in pathlist_lines
+            if path[0] != '#' and len(path.strip()) != 0
+        ]
     return pathlist
 
 def load_passphraselist(passphraselistFile):
-    passphraselist_file = open(passphraselistFile, "r")
-    passphraselist = passphraselist_file.read().splitlines()
-    passphraselist_file.close()
+    with open(passphraselistFile, "r") as passphraselist_file:
+        passphraselist = passphraselist_file.read().splitlines()
     return passphraselist
 
 ################################### Wallets ###################################
@@ -240,7 +241,7 @@ def register_selectable_wallet_class(description):
 # unicodes are normalized in NFC format, which is not what BIP39 requires (NFKD).
 wordlists_dir = os.path.join(os.path.dirname(__file__), "wordlists")
 def load_wordlist(name, lang):
-    filename = os.path.join(wordlists_dir, "{}-{}.txt".format(name, lang))
+    filename = os.path.join(wordlists_dir, f"{name}-{lang}.txt")
     with io.open(filename, encoding="utf_8_sig") as wordlist_file:
         wordlist = []
         for word in wordlist_file:
@@ -300,7 +301,9 @@ class WalletBase(object):
     _savevalidseeds = False
 
     def __init__(self, loading = False):
-        assert loading, "use load_from_filename or create_from_params to create a " + self.__class__.__name__
+        assert (
+            loading
+        ), f"use load_from_filename or create_from_params to create a {self.__class__.__name__}"
 
     @staticmethod
     def set_securityWarningsFlag(setflag):
@@ -320,7 +323,7 @@ class WalletBase(object):
                     address = convert.to_legacy_address(address)
                 else:
                     try:
-                        address = convert.to_legacy_address("bitcoincash:" + address)
+                        address = convert.to_legacy_address(f"bitcoincash:{address}")
                     except convert.InvalidAddress:
                         pass
                 hash160 = binascii.unhexlify(encoding.addr_base58_to_pubkeyhash(address, True)) #assume we have a P2PKH (Legacy) or Segwit (P2SH) so try a Base58 conversion
@@ -403,7 +406,8 @@ class WalletElectrum1(WalletBase):
     def _load_from_dict(cls, wallet):
         seed_version = wallet.get("seed_version")
         if seed_version is None:             raise ValueError("Unrecognized wallet format (Electrum1 seed_version not found)")
-        if seed_version != 4:                raise NotImplementedError("Unsupported Electrum1 seed version " + seed_version)
+        if seed_version != 4:
+            raise NotImplementedError(f"Unsupported Electrum1 seed version {seed_version}")
         if not wallet.get("use_encryption"): raise ValueError("Electrum1 wallet is not encrypted")
         master_pubkey = base64.b16decode(wallet["master_public_key"], casefold=True)
         if len(master_pubkey) != 64:         raise ValueError("Electrum1 master public key is not 64 bytes long")
@@ -490,8 +494,6 @@ class WalletElectrum1(WalletBase):
             assert len(mpk) == 64, "mpk is 64 bytes long (after decoding from hex)"
             self._master_pubkey = "\x04".encode() + mpk  # prepend the uncompressed tag
 
-        # If an mpk wasn't provided (at all), and addresses and hash160s arguments also
-        # weren't provided (in the original function call), prompt the user for addresses.
         else:
             if not addresses and not hash160s:
                 # init_gui() was already called above
@@ -511,14 +513,19 @@ class WalletElectrum1(WalletBase):
                         self._known_hash160s = self._addresses_to_hash160s(addresses)
                         break
                     except (ValueError, TypeError) as e:
-                        tk.messagebox.showerror("Addresses", "An entered address is invalid ({})".format(e))
+                        tk.messagebox.showerror("Addresses", f"An entered address is invalid ({e})")
 
                 # If there are still no hash160s available (and no mpk), check for an address database before giving up
                 if not self._known_hash160s:
                     if os.path.isfile(ADDRESSDB_DEF_FILENAME):
-                        print("Using address database file '"+ADDRESSDB_DEF_FILENAME+"' in the current directory.")
+                        print(
+                            f"Using address database file '{ADDRESSDB_DEF_FILENAME}' in the current directory."
+                        )
                     else:
-                        print("notice: address database file '"+ADDRESSDB_DEF_FILENAME+"' does not exist in current directory", file=sys.stderr)
+                        print(
+                            f"notice: address database file '{ADDRESSDB_DEF_FILENAME}' does not exist in current directory",
+                            file=sys.stderr,
+                        )
                         sys.exit("canceled")
 
             if not address_limit:
@@ -534,8 +541,8 @@ class WalletElectrum1(WalletBase):
                     print("No address generation limit specified... Exiting...")
                     exit()
 
-                if not address_limit:
-                    sys.exit("canceled")
+            if not address_limit:
+                sys.exit("canceled")
             self._addrs_to_generate = address_limit
 
             if not self._known_hash160s:
@@ -562,22 +569,23 @@ class WalletElectrum1(WalletBase):
         for count, mnemonic_ids in enumerate(mnemonic_ids_list, 1):
             # In the event that a tokenlist based recovery is happening, convert the list from string sback to ints
             if (type(mnemonic_ids[0]) == str):
-                new_mnemonic_ids = []
-                for word in mnemonic_ids:
-                    new_mnemonic_ids.append(self._words.index(word))
+                new_mnemonic_ids = [self._words.index(word) for word in mnemonic_ids]
                 mnemonic_ids = new_mnemonic_ids
 
-            # Compute the binary seed from the word list the Electrum1 way
-            seed = ""
-            for i in range(0, 12, 3):
-                seed += "{:08x}".format( mnemonic_ids[i    ]
-                     + num_words  * (   (mnemonic_ids[i + 1] - mnemonic_ids[i    ]) % num_words )
-                     + num_words2 * (   (mnemonic_ids[i + 2] - mnemonic_ids[i + 1]) % num_words ))
+            seed = "".join(
+                "{:08x}".format(
+                    mnemonic_ids[i]
+                    + num_words
+                    * ((mnemonic_ids[i + 1] - mnemonic_ids[i]) % num_words)
+                    + num_words2
+                    * ((mnemonic_ids[i + 2] - mnemonic_ids[i + 1]) % num_words)
+                )
+                for i in range(0, 12, 3)
+            )
             #
 
             unstretched_seed = seed
-            for i in range(100000):  # Electrum1's seed stretching
-
+            for _ in range(100000):
                 #Check the types of the seed and stretched_seed variables and force back to bytes (Allows most code to stay as-is for Py3)
                 if type(seed) is str:
                     seed = seed.encode()
@@ -634,8 +642,8 @@ class WalletElectrum1(WalletBase):
                 print("No mnemonic guess specified... Exiting...")
                 exit()
 
-            if not mnemonic_guess:
-                sys.exit("canceled")
+        if not mnemonic_guess:
+            sys.exit("canceled")
 
         mnemonic_guess = str(mnemonic_guess)  # ensures it's ASCII
 
@@ -647,34 +655,39 @@ class WalletElectrum1(WalletBase):
         # length 1 tuples contains a single mnemonic_id which is similar to the dict's key
         close_mnemonic_ids = {}
         for word in mnemonic_guess.lower().split():
-            close_words = difflib.get_close_matches(word, cls._words, sys.maxsize, closematch_cutoff)
-            if close_words:
+            if close_words := difflib.get_close_matches(
+                word, cls._words, sys.maxsize, closematch_cutoff
+            ):
                 if close_words[0] != word:
-                    print("'{}' was in your guess, but it's not a valid Electrum seed word;\n"
-                          "    trying '{}' instead.".format(word, close_words[0]))
+                    print(
+                        f"'{word}' was in your guess, but it's not a valid Electrum seed word;\n    trying '{close_words[0]}' instead."
+                    )
                 mnemonic_ids_guess += cls._word_to_id[close_words[0]],
                 close_mnemonic_ids[mnemonic_ids_guess[-1]] = tuple( (cls._word_to_id[w],) for w in close_words[1:] )
             else:
                 if word != 'seed_token_placeholder':
-                    print("'{}' was in your guess, but there is no similar Electrum seed word;\n"
-                          "    trying all possible seed words here instead.".format(word))
+                    print(
+                        f"'{word}' was in your guess, but there is no similar Electrum seed word;\n    trying all possible seed words here instead."
+                    )
                 mnemonic_ids_guess += None,
 
         global num_inserts, num_deletes
         num_inserts = max(12 - len(mnemonic_ids_guess), 0)
         num_deletes = max(len(mnemonic_ids_guess) - 12, 0)
         if num_inserts:
-            print("Seed sentence was too short, inserting {} word{} into each guess."
-                  .format(num_inserts, "s" if num_inserts > 1 else ""))
+            print(
+                f'Seed sentence was too short, inserting {num_inserts} word{"s" if num_inserts > 1 else ""} into each guess.'
+            )
         if num_deletes:
-            print("Seed sentence was too long, deleting {} word{} from each guess."
-                  .format(num_deletes, "s" if num_deletes > 1 else ""))
+            print(
+                f'Seed sentence was too long, deleting {num_deletes} word{"s" if num_deletes > 1 else ""} from each guess.'
+            )
 
     # Produces a long stream of differing and incorrect mnemonic_ids guesses (for testing)
     @staticmethod
     def performance_iterator():
         # See WalletBIP39.performance_iterator() for details
-        prefix = tuple(random.randrange(len(WalletElectrum1._words)) for i in range(8))
+        prefix = tuple(random.randrange(len(WalletElectrum1._words)) for _ in range(8))
         for guess in itertools.product(range(len(WalletElectrum1._words)), repeat = 4):
             yield prefix + guess
 
@@ -696,13 +709,11 @@ class WalletBIP32(WalletBase):
             # Append the internal/external (change) index to the path in create_from_params()
             self._append_last_index = True
         else:
-            for arg_path in arg_derivationpath:
-                derivation_paths.append(arg_path)
-
+            derivation_paths.extend(iter(arg_derivationpath))
         self._path_indexes = []
         for path in derivation_paths:
             path_indexes = path.split("/")
-            if path_indexes[0] == "m" or path_indexes[0] == "":
+            if path_indexes[0] in ["m", ""]:
                 del path_indexes[0]   # the optional leading "m/"
             if path_indexes[-1] == "":
                 del path_indexes[-1]  # the optional trailing "/"
@@ -717,14 +728,11 @@ class WalletBIP32(WalletBase):
 
     def passwords_per_seconds(self, seconds):
         if not self._passwords_per_second:
-            scalar_multiplies = 0
-            for i in self._path_indexes[0]: # Just use the first derivation path for this...
-                if i < 2147483648:          # if it's a normal child key
-                    scalar_multiplies += 1  # then it requires a scalar multiply
+            scalar_multiplies = sum(1 for i in self._path_indexes[0] if i < 2147483648)
             if not self._chaincode:
                 scalar_multiplies += self._addrs_to_generate + 1  # each addr. to generate req. a scalar multiply
             self._passwords_per_second = \
-                calc_passwords_per_second(self._checksum_ratio, self._kdf_overhead, scalar_multiplies)
+                    calc_passwords_per_second(self._checksum_ratio, self._kdf_overhead, scalar_multiplies)
         passwords_per_second = max(int(round(self._passwords_per_second * seconds)), 1)
         # Divide the speed by however many passphrases we are testing for each seed (Otherwise the benchmarking step takes ages)
         return  passwords_per_second / len(self._derivation_salts)

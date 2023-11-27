@@ -58,7 +58,7 @@ if __name__ == "__main__":
 		print()
 		print("You may also consider donating to Witeestars, who created and maintained this tool until late 2017 @ bc1qruelhm4mkvtjr0ls5c5p0n6gxy3jsm09cz5rud")
 		print()
-		btcrpass.safe_print("Password found: '" + password_found + "'")
+		btcrpass.safe_print(f"Password found: '{password_found}'")
 		if any(ord(c) < 32 or ord(c) > 126 for c in password_found):
 			print("HTML Encoded Password:   '" + password_found.encode("ascii", "xmlcharrefreplace").decode() + "'")
 		retval = 0

@@ -73,7 +73,7 @@ class Curve:
             return Curve._curves_cache[name]
 
         l = [c for c in curve_defs.curves if c['name']==name]
-        if len(l) == 0:
+        if not l:
             return None
         cp = l[0]
         if cp['type'] == curve_defs.WEIERSTRASS:
@@ -250,13 +250,10 @@ class Curve:
     def encode_point(self, P):
         """ encode/compress a point according to its curve"""
         raise NotImplementedError('Abstract method encode_point')
-        pass
 
     def decode_point(self, eP):
         """ decode/decompress a point according to its curve"""
         raise NotImplementedError('Abstract method _point decode_point')
-
-        pass
 
     @staticmethod
     def _sqrt(n, p, sign=0):
@@ -278,7 +275,7 @@ class Curve:
         else:
             z = 2
             while pow(z,(p-1)//2,p) == 1:
-                z = z+1
+                z += 1
             c = pow(z,q,p)
             r = pow(n,(q+1)//2,p)
             t = pow(n,q,p)
@@ -286,15 +283,14 @@ class Curve:
             while True:
                 if t == 1:
                     break
-                else:
-                    for i in range(1,m):
-                        if pow(t,pow(2,i),p) == 1:
-                            break
-                    b = pow(c,pow(2,m-i-1),p)
-                    r = (r*b)   %p
-                    t = (t*b*b) %p
-                    c = (b*b)   %p
-                    m = i
+                for i in range(1,m):
+                    if pow(t,pow(2,i),p) == 1:
+                        break
+                b = pow(c,pow(2,m-i-1),p)
+                r = (r*b)   %p
+                t = (t*b*b) %p
+                c = (b*b)   %p
+                m = i
         if sign:
             sign = 1
         if r&1 != sign:
@@ -346,8 +342,7 @@ class WeierstrassCurve(Curve):
         """ """
         p  = self.field
         y2 = (x*x*x + self.a*x + self.b)%p
-        y  = self._sqrt(y2,p,sign)
-        return y
+        return self._sqrt(y2,p,sign)
 
     def encode_point(self, P, compressed=False):
         """ Encodes a point P according to *P1363-2000*.
@@ -381,7 +376,7 @@ class WeierstrassCurve(Curve):
         """
         size = self.size+7 >> 3
         xy    =  bytearray(eP)
-        if xy[0] == 2 or xy[0] == 3:
+        if xy[0] in [2, 3]:
             x = xy[1:1+size]
             x = int.from_bytes(x,'big')
             y = self.y_recover(x,xy[0]&1)
@@ -517,7 +512,7 @@ class TwistedEdwardCurve(Curve):
         elif self.name == 'Ed521':
             size = 66
         else:
-            assert False, '%s not supported'%curve.name
+            assert False, f'{curve.name} not supported'
         return size
 
 
@@ -554,17 +549,15 @@ class TwistedEdwardCurve(Curve):
         u = (1-yy)%q
         v = pow(a-d*yy,q-2,q)
         xx = (u*v)%q
-        if self.name =='Ed25519':
+        if self.name == 'Ed25519':
             x = pow(xx,(q+3)//8,q)
             if (x*x - xx) % q != 0:
                 I = pow(2,(q-1)//4,q)
                 x = (x*I) % q
-        elif self.name =='Ed448':
-            x = pow(xx,(q+1)//4,q)
-        elif self.name == 'Ed521':
+        elif self.name in ['Ed448', 'Ed521']:
             x = pow(xx,(q+1)//4,q)
         else:
-            assert False, '%s not supported'%curve.name
+            assert False, f'{curve.name} not supported'
 
         if x &1 != sign:
             x = q-x
@@ -630,8 +623,7 @@ class TwistedEdwardCurve(Curve):
         k[0]  &= 0xF8
         k[31] = (k[31] &0x7F) | 0x40
         k = bytes(k)
-        k = int.from_bytes(k,'little')
-        return k
+        return int.from_bytes(k,'little')
 
     @staticmethod
     def encode_scalar_25519(k):
@@ -647,8 +639,7 @@ class TwistedEdwardCurve(Curve):
         k = bytearray(k)
         k[0]  &= 0xF8
         k[31] = (k[31] &0x7F) | 0x40
-        k = bytes(k)
-        return k
+        return bytes(k)
 
     def _add_point(self, P, Q):
         """ See :func:`Curve.add_point` """
@@ -794,9 +785,7 @@ class MontgomeryCurve(Curve):
         binv = pow(self.b, p-2,p)
         assert((binv*self.b)%p == 1)
         y2 = (binv*by2)%p
-        y  = self._sqrt(y2,p,sign)
-
-        return y
+        return self._sqrt(y2,p,sign)
 
     def encode_point(self, P):
         """ Encodes a point P according to *RFC7748*.
@@ -870,16 +859,14 @@ class MontgomeryCurve(Curve):
             else:
                 x2,z2, x3,z3 = self._ladder_step(x1, x2,z2, x3,z3)
 
-        p = self.field
         if z2:
             y2 = None
             if (P.has_y):
                 x2,y2,z2 = self._ladder_recover_y(P.x,P.y, x2,z2, x3,z3)
+            p = self.field
             zinv = pow(z2,(p - 2),p)
             kx = (x2*zinv)%p
-            ky = None
-            if y2:
-                ky = (y2*zinv)%p
+            ky = (y2*zinv)%p if y2 else None
             return Point (kx, ky, self)
         else:
             return self.infinity
@@ -1006,7 +993,7 @@ class Point:
         """
         if self.is_infinity:
             raise ECPyException('Infinity')
-        if self._x == None:
+        if self._x is None:
             raise ECPyException('x coordinate not set')
         return self._x
 
@@ -1023,7 +1010,7 @@ class Point:
         """
         if self.is_infinity:
             raise ECPyException('Infinity')
-        if self._y == None:
+        if self._y is None:
             raise ECPyException('y coordinate not set')
         return self._y
 
@@ -1072,9 +1059,9 @@ class Point:
 
         if self.is_infinity:
             return
-        if self._y == None:
+        if self._y is None:
             self._y = self.curve.y_recover(self._x, sign)
-        if self._x == None:
+        if self._x is None:
             self._x = self.curve.x_recover(self._y, sign)
 
     def __add__(self, Q):
@@ -1086,7 +1073,7 @@ class Point:
             if self._curve.name != Q._curve.name:
                 raise ECPyException('__add__: points on same curve')
             return self.curve._add_point(self,Q)
-        raise ECPyException('__add__: type not supported: %s'%type(Q))
+        raise ECPyException(f'__add__: type not supported: {type(Q)}')
 
     def __sub__(self, Q):
         if isinstance(Q,Point) :
@@ -1097,25 +1084,21 @@ class Point:
             if self._curve.name != Q._curve.name:
                 raise ECPyException('__sub__: points on same curve')
             return self.curve._add_point(self,-Q)
-        raise ECPyException('__sub__: type not supported: %s'%type(Q))
+        raise ECPyException(f'__sub__: type not supported: {type(Q)}')
 
     def __mul__(self, scal):
         if isinstance(scal,int):
             if self.is_infinity:
                 return self
             scal = scal%self.curve.order
-            if scal == 0:
-                return Point.infinity()
-            return self.curve._mul_point(scal,self)
-        raise ECPyException('__mul__: type not supported: %s'%type(scal))
+            return Point.infinity() if scal == 0 else self.curve._mul_point(scal,self)
+        raise ECPyException(f'__mul__: type not supported: {type(scal)}')
 
     def __rmul__(self,scal) :
         return self.__mul__(scal)
 
     def __neg__(self):
-        if self.is_infinity:
-            return self
-        return self.curve._neg_point(self)
+        return self if self.is_infinity else self.curve._neg_point(self)
 
     def __eq__(self,Q):
         if isinstance(Q,Point) :
@@ -1126,7 +1109,7 @@ class Point:
             return (self._curve.name == Q._curve.name  and
                     self._x == Q._x and
                     self._y == Q._y)
-        raise NotImplementedError('eq: type not supported: %s'%(type(Q)))
+        raise NotImplementedError(f'eq: type not supported: {type(Q)}')
 
     def __str__(self):
         if self.is_infinity:

@@ -40,9 +40,9 @@ class GroesltcoinEsploraClient(BaseClient):
     def compose_request(self, function, data='', parameter='', variables=None, post_data='', method='get'):
         url_path = function
         if data:
-            url_path += '/' + data
+            url_path += f'/{data}'
         if parameter:
-            url_path += '/' + parameter
+            url_path += f'/{parameter}'
         if variables is None:
             variables = {}
         if self.api_key:
@@ -93,34 +93,33 @@ class GroesltcoinEsploraClient(BaseClient):
         if 'block_height' in tx['status']:
             block_height = tx['status']['block_height']
             confirmations = blockcount - block_height
-        status = 'unconfirmed'
-        if tx['status']['confirmed']:
-            status = 'confirmed'
+        status = 'confirmed' if tx['status']['confirmed'] else 'unconfirmed'
         fee = None if 'fee' not in tx else tx['fee']
         t = Transaction(locktime=tx['locktime'], version=tx['version'], network=self.network,
                         fee=fee, size=tx['size'], hash=tx['txid'],
                         date=None if 'block_time' not in tx['status'] else datetime.fromtimestamp(tx['status']['block_time']),
                         confirmations=confirmations, block_height=block_height, status=status,
                         coinbase=tx['vin'][0]['is_coinbase'])
-        index_n = 0
-        for ti in tx['vin']:
+        for index_n, ti in enumerate(tx['vin']):
             if tx['vin'][0]['is_coinbase']:
-                t.add_input(prev_hash=ti['txid'], output_n=ti['vout'], index_n=index_n,
-                            unlocking_script=ti['scriptsig'], value=sum([o['value'] for o in tx['vout']]))
+                t.add_input(
+                    prev_hash=ti['txid'],
+                    output_n=ti['vout'],
+                    index_n=index_n,
+                    unlocking_script=ti['scriptsig'],
+                    value=sum(o['value'] for o in tx['vout']),
+                )
             else:
                 t.add_input(prev_hash=ti['txid'], output_n=ti['vout'],
                             unlocking_script_unsigned=ti['prevout']['scriptpubkey'], index_n=index_n,
                             value=ti['prevout']['value'], address=ti['prevout']['scriptpubkey_address'],
                             unlocking_script=ti['scriptsig'])
-            index_n += 1
-        index_n = 0
-        for to in tx['vout']:
+        for index_n, to in enumerate(tx['vout']):
             address = ''
             if 'scriptpubkey_address' in to:
                 address = to['scriptpubkey_address']
             t.add_output(value=to['value'], address=address, lock_script=to['scriptpubkey'],
                          output_n=index_n, spent=None)
-            index_n += 1
         if 'segwit' in [i.witness_type for i in t.inputs]:
             t.witness_type = 'segwit'
         t.update_totals()
@@ -137,7 +136,7 @@ class GroesltcoinEsploraClient(BaseClient):
         while True:
             parameter = 'txs'
             if before_txid:
-                parameter = 'txs/chain/%s' % before_txid
+                parameter = f'txs/chain/{before_txid}'
             res = self.compose_request('address', address, parameter)
             prtxs += res
             if len(res) == 25:
@@ -167,8 +166,9 @@ class GroesltcoinEsploraClient(BaseClient):
 
     def estimatefee(self, blocks):
         est = self.compose_request('fee-estimates')
-        closest = (sorted([int(i) - blocks for i in est.keys() if int(i) - blocks >= 0]))
-        if closest:
+        if closest := (
+            sorted([int(i) - blocks for i in est.keys() if int(i) - blocks >= 0])
+        ):
             return int(est[str(closest[0] + blocks)] * 1024)
         else:
             return int(est[str(sorted([int(i) for i in est.keys()])[-1:][0])] * 1024)
@@ -177,10 +177,7 @@ class GroesltcoinEsploraClient(BaseClient):
         return self.compose_request('blocks', 'tip', 'height')
 
     def mempool(self, txid):
-        if txid:
-            t = self.gettransaction(txid)
-            if t and not t.confirmations:
-                return [t.hash]
-        else:
+        if not txid:
             return self.compose_request('mempool', 'txids')
-        return []
+        t = self.gettransaction(txid)
+        return [t.hash] if t and not t.confirmations else []

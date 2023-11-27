@@ -81,13 +81,7 @@ searchfailedtext = "\nAll possible passwords (as specified in your tokenlist or 
 
 def full_version():
     from struct import calcsize
-    return "btcrecover {} on Python {} {}-bit, {}-bit unicodes, {}-bit ints".format(
-        __version__,
-        ".".join(str(i) for i in sys.version_info[:3]),
-        calcsize(b"P") * 8,
-        sys.maxunicode.bit_length(),
-        sys.maxsize.bit_length() + 1
-    )
+    return f'btcrecover {__version__} on Python {".".join(str(i) for i in sys.version_info[:3])} {calcsize(b"P") * 8}-bit, {sys.maxunicode.bit_length()}-bit unicodes, {sys.maxsize.bit_length() + 1}-bit ints'
 
 
 # One of these two is typically called relatively early by parse_arguments()
@@ -177,8 +171,7 @@ def typo_closecase(p, i):  #  Returns a swapped case only when case transitions 
 def typo_replace_wildcard(p, i): return [e for e in typos_replace_expanded if e != p[i]]
 
 def typo_map(p, i):
-    returnVal = "".join(list(typos_map.get(p[i], ())))
-    return returnVal
+    return "".join(list(typos_map.get(p[i], ())))
 
 # (typos_replace_expanded and typos_map are initialized from args.typos_replace
 # and args.typos_map respectively in parse_arguments() )
@@ -239,17 +232,13 @@ def load_wallet(wallet_filename):
     try:
         with open(wallet_filename, "rb") as wallet_file:
             for wallet_type in wallet_types:
-                found = wallet_type.is_wallet_file(wallet_file)
-                if found:
+                if found := wallet_type.is_wallet_file(wallet_file):
                     wallet_file.close()
                     return wallet_type.load_from_filename(wallet_filename)
                 elif found is None:  # None means it might still be this type of wallet...
                     uncertain_wallet_types.append(wallet_type)
-    except PermissionError: #Metamask wallets can be a folder which may throw a PermissionError or IsADirectoryError
+    except (PermissionError, IsADirectoryError): #Metamask wallets can be a folder which may throw a PermissionError or IsADirectoryError
         return WalletMetamask.load_from_filename(wallet_filename)
-    except IsADirectoryError:
-        return WalletMetamask.load_from_filename(wallet_filename)
-
     # If the wallet type couldn't be definitively determined, try each
     # questionable type (which must raise ValueError on a load failure)
     uncertain_errors = []
@@ -257,7 +246,7 @@ def load_wallet(wallet_filename):
         try:
             return wallet_type.load_from_filename(wallet_filename)
         except ValueError as e:
-            uncertain_errors.append(wallet_type.__name__ + ": " + str(e))
+            uncertain_errors.append(f"{wallet_type.__name__}: {str(e)}")
 
     error_exit("unrecognized wallet format" +
         ("; heuristic parser(s) reported:\n    " + "\n    ".join(uncertain_errors) if uncertain_errors else "") )
@@ -287,7 +276,7 @@ def load_from_base64_key(key_crc_base64):
 
     if not wallet_type:
         print("Wallet Types:", wallet_types_by_id)
-        error_exit("unrecognized encrypted key type '" + key_data[:2].decode() + "'")
+        error_exit(f"unrecognized encrypted key type '{key_data[:2].decode()}'")
 
     loaded_wallet = wallet_type.load_from_data_extract(key_data[3:])
     return key_crc
@@ -356,7 +345,7 @@ class WalletBitcoinCore(object):
         return wallet_file.read(8) == b"\x62\x31\x05\x00\x09\x00\x00\x00"  # BDB magic, Btree v9
 
     def __init__(self, loading = False):
-        assert loading, 'use load_from_* to create a ' + self.__class__.__name__
+        assert loading, f'use load_from_* to create a {self.__class__.__name__}'
         load_aes256_library()
 
     def __setstate__(self, state):
@@ -439,7 +428,10 @@ class WalletBitcoinCore(object):
         # (it will loudly fail if this isn't the case; if smarter it could gracefully succeed):
         self = cls(loading=True)
         encrypted_master_key, self._salt, method, self._iter_count = struct.unpack_from(b"< 49p 9p I I", mkey)
-        if method != 0: raise NotImplementedError("Unsupported Bitcoin Core key derivation method " + str(method))
+        if method != 0:
+            raise NotImplementedError(
+                f"Unsupported Bitcoin Core key derivation method {str(method)}"
+            )
 
         # only need the final 2 encrypted blocks (half of it padding) plus the salt and iter_count saved above
         self._part_encrypted_master_key = encrypted_master_key[-32:]
@@ -476,7 +468,7 @@ class WalletBitcoinCore(object):
 
         for count, password in enumerate(passwords, 1):
             derived_key = password + self._salt
-            for i in range(self._iter_count):
+            for _ in range(self._iter_count):
                 derived_key = l_sha512(derived_key).digest()
             part_master_key = aes256_cbc_decrypt(derived_key[:32], self._part_encrypted_master_key[:16], self._part_encrypted_master_key[16:])
             #
@@ -530,12 +522,8 @@ class WalletBitcoinCore(object):
 
         self._cl_kernel = self._cl_queues = self._cl_hashes_buffers = None  # clear any previously loaded
         cl_context = pyopencl.Context(devices)
-        #
-        # Load and compile the OpenCL program
-        kernel_file = open(os.path.join(os.path.dirname(os.path.realpath(__file__)), "opencl","sha512-bc-kernel.cl"), encoding="ascii", errors="ignore")
-        cl_program = pyopencl.Program(cl_context, kernel_file.read()).build("-w")
-        kernel_file.close()
-
+        with open(os.path.join(os.path.dirname(os.path.realpath(__file__)), "opencl","sha512-bc-kernel.cl"), encoding="ascii", errors="ignore") as kernel_file:
+            cl_program = pyopencl.Program(cl_context, kernel_file.read()).build("-w")
         #
         # Configure and store for later the OpenCL kernel (the entrance function)
         self._cl_kernel = cl_program.kernel_sha512_bc
@@ -546,7 +534,13 @@ class WalletBitcoinCore(object):
             if local_ws[i] is None: continue
             max_local_ws = self._cl_kernel.get_work_group_info(pyopencl.kernel_work_group_info.WORK_GROUP_SIZE, device)
             if local_ws[i] > max_local_ws:
-                error_exit("--local-ws of", local_ws[i], "exceeds max of", max_local_ws, "for GPU '"+device.name.strip()+"' with Bitcoin Core wallets")
+                error_exit(
+                    "--local-ws of",
+                    local_ws[i],
+                    "exceeds max of",
+                    max_local_ws,
+                    f"for GPU '{device.name.strip()}' with Bitcoin Core wallets",
+                )
 
         # Create one command queue and one I/O buffer per device
         self._cl_queues         = []
@@ -670,7 +664,15 @@ class WalletPywallet(WalletBitcoinCore):
             raise ValueError("Unrecognized pywallet format (can't find mkey opening brace)")
         wallet = json.JSONDecoder().raw_decode(cur_block[found_at:])[0]
 
-        if not all(name in wallet for name in ("nDerivationIterations", "nDerivationMethod", "nID", "salt")):
+        if any(
+            name not in wallet
+            for name in (
+                "nDerivationIterations",
+                "nDerivationMethod",
+                "nID",
+                "salt",
+            )
+        ):
             raise ValueError("Unrecognized pywallet format (can't find all mkey attributes)")
 
         if wallet["nID"] != 1:
@@ -726,7 +728,7 @@ class WalletMultiBit(object):
         return data.startswith(b"Salted__")
 
     def __init__(self, loading = False):
-        assert loading, 'use load_from_* to create a ' + self.__class__.__name__
+        assert loading, f'use load_from_* to create a {self.__class__.__name__}'
         aes_library_name = load_aes256_library().__name__
         self._passwords_per_second = 100000 if aes_library_name == "Crypto" else 5000
 
@@ -798,22 +800,17 @@ class WalletMultiBit(object):
                         # If it's outside of the base58 set [1-9A-HJ-NP-Za-km-z], break
                         if c > ord("z") or c < ord("1") or ord("9") < c < ord("A") or ord("Z") < c < ord("a") or chr(c) in "IOl":
                             break
-                    # If the loop above doesn't break, it's base58-looking so far
                     else:
-                        # If another AES block is available, decrypt and check it as well to avoid false positives
-                        if len(encrypted_block) >= 32:
-                            b58_privkey = l_aes256_cbc_decrypt(key1 + key2, encrypted_block[:16], encrypted_block[16:32])
-                            for c in b58_privkey:
-                                if c > ord("z") or c < ord("1") or ord("9") < c < ord("A") or ord("Z") < c < ord("a") or chr(c) in "IOl":
-                                    break  # not base58
-                            # If the loop above doesn't break, it's base58; we've found it
-                            else:
-                                return orig_passwords[count-1], count
-                        else:
+                        if len(encrypted_block) < 32:
                             # (when no second block is available, there's a 1 in 300 billion false positive rate here)
                             return orig_passwords[count - 1], count
-                #
-                # Does it look like a bitcoinj protobuf (newest Bitcoin for Android backup)
+                        b58_privkey = l_aes256_cbc_decrypt(key1 + key2, encrypted_block[:16], encrypted_block[16:32])
+                        for c in b58_privkey:
+                            if c > ord("z") or c < ord("1") or ord("9") < c < ord("A") or ord("Z") < c < ord("a") or chr(c) in "IOl":
+                                break  # not base58
+                        # If the loop above doesn't break, it's base58; we've found it
+                        else:
+                            return orig_passwords[count-1], count
                 elif b58_privkey[2:6] == b"org." and b58_privkey[0] == 10 and b58_privkey[1] < 128:
                     for c in b58_privkey[6:14]:
                         # If it doesn't look like a lower alpha domain name of len >= 8 (e.g. 'bitcoin.'), break
@@ -822,8 +819,6 @@ class WalletMultiBit(object):
                     # If the loop above doesn't break, it looks like a domain name; we've found it
                     else:
                         return orig_passwords[count - 1], count
-                #
-                #  Does it look like a KnC for Android key backup?
                 elif b58_privkey == b"# KEEP YOUR PRIV":
                     if isinstance(orig_passwords[count-1],str):
                         return orig_passwords[count-1], count
@@ -866,7 +861,7 @@ class WalletBitcoinj(object):
         return False
 
     def __init__(self, loading = False):
-        assert loading, 'use load_from_* to create a ' + self.__class__.__name__
+        assert loading, f'use load_from_* to create a {self.__class__.__name__}'
         global pylibscrypt
         import lib.pylibscrypt as pylibscrypt
         # This is the base estimate for the scrypt N,r,p defaults of 16384,8,1
@@ -904,12 +899,14 @@ class WalletBitcoinj(object):
         if pb_wallet.encryption_type == bitcoinj_pb2.Wallet.UNENCRYPTED:
             raise ValueError("bitcoinj wallet is not encrypted")
         if pb_wallet.encryption_type != bitcoinj_pb2.Wallet.ENCRYPTED_SCRYPT_AES:
-            raise NotImplementedError("Unsupported bitcoinj encryption type "+str(pb_wallet.encryption_type))
+            raise NotImplementedError(
+                f"Unsupported bitcoinj encryption type {str(pb_wallet.encryption_type)}"
+            )
         if not pb_wallet.HasField("encryption_parameters"):
             raise ValueError("bitcoinj wallet is missing its scrypt encryption parameters")
 
         for key in pb_wallet.key:
-            if  key.type in (bitcoinj_pb2.Key.ENCRYPTED_SCRYPT_AES, bitcoinj_pb2.Key.DETERMINISTIC_KEY) and key.HasField("encrypted_data"):
+            if key.type in (bitcoinj_pb2.Key.ENCRYPTED_SCRYPT_AES, bitcoinj_pb2.Key.DETERMINISTIC_KEY) and key.HasField("encrypted_data"):
                 encrypted_len = len(key.encrypted_data.encrypted_private_key)
                 if encrypted_len == 48:
                     # only need the final 2 encrypted blocks (half of it padding) plus the scrypt parameters
@@ -920,7 +917,10 @@ class WalletBitcoinj(object):
                     self._scrypt_r    = pb_wallet.encryption_parameters.r
                     self._scrypt_p    = pb_wallet.encryption_parameters.p
                     return self
-                print("Warning: ignoring encrypted key of unexpected length ("+str(encrypted_len)+")", file=sys.stderr)
+                print(
+                    f"Warning: ignoring encrypted key of unexpected length ({encrypted_len})",
+                    file=sys.stderr,
+                )
 
         raise ValueError("No encrypted keys found in bitcoinj wallet")
 
@@ -936,7 +936,7 @@ class WalletBitcoinj(object):
         return self
 
     def difficulty_info(self):
-        return "scrypt N, r, p = {}, {}, {}".format(self._scrypt_n, self._scrypt_r, self._scrypt_p)
+        return f"scrypt N, r, p = {self._scrypt_n}, {self._scrypt_r}, {self._scrypt_p}"
 
     # This is the time-consuming function executed by worker thread(s). It returns a tuple: if a password
     # is correct return it, else return False for item 0; return a count of passwords checked for item 1
@@ -990,7 +990,7 @@ class WalletCoinomi(WalletBitcoinj):
             if mnemonic[-2:-1] != b'\x0c':
                 mnemonic = mnemonic.replace('\x0c', "") + " (BIP39 Passphrase In Use, if you don't have it use BIP32 root key to recover wallet)"
 
-            logfile.write("BIP39 Mnemonic: " + mnemonic + "\n")
+            logfile.write(f"BIP39 Mnemonic: {mnemonic}" + "\n")
             master_key = aes256_cbc_decrypt(derived_key, self._masterkey_encrypted_iv, self._masterkey_encrypted)
             from lib.cashaddress import convert, base58
             xprv = base58.b58encode_check(
@@ -1035,7 +1035,9 @@ class WalletCoinomi(WalletBitcoinj):
         if pb_wallet.encryption_type == coinomi_pb2.Wallet.UNENCRYPTED:
             raise ValueError("Coinomi wallet is not encrypted")
         if pb_wallet.encryption_type != coinomi_pb2.Wallet.ENCRYPTED_SCRYPT_AES:
-            raise NotImplementedError("Unsupported Coinomi wallet encryption type "+str(pb_wallet.encryption_type))
+            raise NotImplementedError(
+                f"Unsupported Coinomi wallet encryption type {str(pb_wallet.encryption_type)}"
+            )
         if not pb_wallet.HasField("encryption_parameters"):
             raise ValueError("Coinomi wallet is missing its scrypt encryption parameters")
 
@@ -1067,7 +1069,7 @@ class WalletCoinomi(WalletBitcoinj):
         return self
 
     def difficulty_info(self):
-        return "scrypt N, r, p = {}, {}, {}".format(self._scrypt_n, self._scrypt_r, self._scrypt_p)
+        return f"scrypt N, r, p = {self._scrypt_n}, {self._scrypt_r}, {self._scrypt_p}"
 
     # This is the time-consuming function executed by worker thread(s). It returns a tuple: if a password
     # is correct return it, else return False for item 0; return a count of passwords checked for item 1
@@ -1120,7 +1122,7 @@ class WalletMultiBitHD(WalletBitcoinj):
             pb_wallet = bitcoinj_pb2.Wallet()
             pb_wallet.ParseFromString(decrypted_data[:-padding_len])
             mnemonic = self.extract_mnemonic(pb_wallet, password)
-            logfile.write("BIP39 Seed: " + mnemonic)
+            logfile.write(f"BIP39 Seed: {mnemonic}")
 
     # From https://github.com/gurnec/decrypt_bitcoinj_seed
     def extract_mnemonic(self, pb_wallet, password):
@@ -1304,7 +1306,7 @@ class WalletMsigna(object):
         return None if wallet_file.read(16) == b"SQLite format 3\0" else False
 
     def __init__(self, loading = False):
-        assert loading, 'use load_from_* to create a ' + self.__class__.__name__
+        assert loading, f'use load_from_* to create a {self.__class__.__name__}'
         aes_library_name = load_aes256_library().__name__
         self._passwords_per_second = 50000 if aes_library_name == "Crypto" else 5000
 
@@ -1326,19 +1328,21 @@ class WalletMsigna(object):
         select = "SELECT * FROM Keychain"
         try:
             if "args" in globals() and args.msigna_keychain:  # args is not defined during unit tests
-                wallet_cur = wallet_conn.execute(select + " WHERE name LIKE '%' || ? || '%'", (args.msigna_keychain,))
+                wallet_cur = wallet_conn.execute(
+                    f"{select} WHERE name LIKE '%' || ? || '%'",
+                    (args.msigna_keychain,),
+                )
             else:
                 wallet_cur = wallet_conn.execute(select)
         except sqlite3.OperationalError as e:
             if str(e).startswith("no such table"):
-                raise ValueError("Not an mSIGNA wallet: " + str(e))  # it might be a Bither wallet
+                raise ValueError(f"Not an mSIGNA wallet: {str(e)}")
             else:
                 raise# unexpected error
         keychain = wallet_cur.fetchone()
         if not keychain:
             error_exit("no such keychain found in the mSIGNA vault")
-        keychain_extra = wallet_cur.fetchone()
-        if keychain_extra:
+        if keychain_extra := wallet_cur.fetchone():
             print("Multiple matching keychains found in the mSIGNA vault:", file=sys.stderr)
             print("  ", keychain["name"])
             print("  ", keychain_extra["name"])
@@ -1389,10 +1393,10 @@ class WalletMsigna(object):
             # 5. The EVP_BytesToKey outer loop is unrolled with two iterations below which produces
             # 320 bits (2x SHA1's output) which is > 32 bytes (what's needed for the AES-256 key)
             derived_part1 = password_hashed + salt
-            for i in range(5):  # 5 is mSIGNA's hard coded iteration count
+            for _ in range(5):
                 derived_part1 = l_sha1(derived_part1).digest()
             derived_part2 = derived_part1 + password_hashed + salt
-            for i in range(5):
+            for _ in range(5):
                 derived_part2 = l_sha1(derived_part2).digest()
             #
             part_privkey = aes256_cbc_decrypt(derived_part1 + derived_part2[:12], part_encrypted_privkey[:16], part_encrypted_privkey[16:])
@@ -1411,7 +1415,7 @@ class WalletElectrum(object):
     opencl_algo = -1
 
     def __init__(self, loading = False):
-        assert loading, 'use load_from_* to create a ' + self.__class__.__name__
+        assert loading, f'use load_from_* to create a {self.__class__.__name__}'
         aes_library_name = load_aes256_library().__name__
         self._passwords_per_second = 100000 if aes_library_name == "Crypto" else 5000
 
@@ -1462,7 +1466,10 @@ class WalletElectrum1(WalletElectrum):
     def _load_from_dict(cls, wallet):
         seed_version = wallet.get("seed_version")
         if seed_version is None:             raise ValueError("Unrecognized wallet format (Electrum1 seed_version not found)")
-        if seed_version != 4:                raise NotImplementedError("Unsupported Electrum1 seed version " + str(seed_version))
+        if seed_version != 4:
+            raise NotImplementedError(
+                f"Unsupported Electrum1 seed version {str(seed_version)}"
+            )
         if not wallet.get("use_encryption"): raise RuntimeError("Electrum1 wallet is not encrypted")
         seed_data = base64.b64decode(wallet["seed"])
         if len(seed_data) != 64:             raise RuntimeError("Electrum1 encrypted seed plus iv is not 64 bytes long")
@@ -1528,20 +1535,19 @@ class WalletElectrum2(WalletElectrum):
         seed_version = wallet.get("seed_version", "(not found)")
         try:
             if wallet.get("seed_version") < 11:  # all versions above 2.x
-                raise NotImplementedError("Unsupported Electrum2 seed version " + str(seed_version))
+                raise NotImplementedError(
+                    f"Unsupported Electrum2 seed version {str(seed_version)}"
+                )
 
         except TypeError: # Seed version is none... Likely imported loose key wallet...
             if wallet_type != "imported":
-                raise NotImplementedError("Unsupported Electrum2 seed version " + str(seed_version))
-            else:
-                pass
-
+                raise NotImplementedError(
+                    f"Unsupported Electrum2 seed version {str(seed_version)}"
+                )
         xprv = None
         while True:  # "loops" exactly once; only here so we've something to break out of
 
-            # Electrum 2.7+ standard wallets have a keystore
-            keystore = wallet.get("keystore")
-            if keystore:
+            if keystore := wallet.get("keystore"):
                 keystore_type = keystore.get("type", "(not found)")
 
                 # Wallets originally created by an Electrum 2.x version
@@ -1549,10 +1555,8 @@ class WalletElectrum2(WalletElectrum):
                     xprv = keystore.get("xprv")
                     if xprv: break
 
-                # Former Electrum 1.x wallet after conversion to Electrum 2.7+ standard-wallet format
                 elif keystore_type == "old":
-                    seed_data = keystore.get("seed")
-                    if seed_data:
+                    if seed_data := keystore.get("seed"):
                         # Construct and return a WalletElectrum1 object
                         seed_data = base64.b64decode(seed_data)
                         if len(seed_data) != 64:
@@ -1562,7 +1566,6 @@ class WalletElectrum2(WalletElectrum):
                         self._part_encrypted_data = seed_data[16:32]  # the first 16-byte encrypted block of the seed
                         return self
 
-                # Imported loose private keys
                 elif keystore_type == "imported":
                     for privkey in keystore["keypairs"].values():
                         if privkey:
@@ -1576,18 +1579,21 @@ class WalletElectrum2(WalletElectrum):
                             return self
 
                 else:
-                    print("Warning: found unsupported keystore type " + keystore_type, file=sys.stderr)
+                    print(
+                        f"Warning: found unsupported keystore type {keystore_type}",
+                        file=sys.stderr,
+                    )
 
             # Electrum 2.7+ multisig or 2fa wallet
             for i in itertools.count(1):
-                x = wallet.get("x{}/".format(i))
+                x = wallet.get(f"x{i}/")
                 if not x: break
                 x_type = x.get("type", "(not found)")
                 if x_type == "bip32":
                     xprv = x.get("xprv")
                     if xprv: break
                 else:
-                    print("Warning: found unsupported key type " + x_type, file=sys.stderr)
+                    print(f"Warning: found unsupported key type {x_type}", file=sys.stderr)
             if xprv: break
 
             # Electrum 2.0 - 2.6.4 wallet with imported loose private keys
@@ -1604,12 +1610,9 @@ class WalletElectrum2(WalletElectrum):
                         self._part_encrypted_data = privkey[-16:]     # the last 16-byte encrypted block of the key
                         return self
 
-            # Electrum 2.0 - 2.6.4 wallet (of any other wallet type)
-            else:
-                mpks = wallet.get("master_private_keys")
-                if mpks:
-                    xprv = list(mpks.values())[0]
-                    break
+            elif mpks := wallet.get("master_private_keys"):
+                xprv = list(mpks.values())[0]
+                break
 
             raise RuntimeError("No master private keys or seeds found in Electrum2 wallet")
 
@@ -1675,7 +1678,9 @@ class WalletElectrumLooseKey(WalletElectrum):
             padding_len = privkey_end[-1]
             # Check for valid PKCS7 padding for a 52 or 51 byte "WIF" private key
             # (4*16-byte-blocks == 64, 64 - 52 or 51 == 12 or 13
-            if (padding_len == 12 or padding_len == 13) and privkey_end.endswith((chr(padding_len) * padding_len).encode()):
+            if padding_len in [12, 13] and privkey_end.endswith(
+                (chr(padding_len) * padding_len).encode()
+            ):
                 for c in privkey_end[:-padding_len]:
                     # If it's outside of the base58 set [1-9A-HJ-NP-Za-km-z]
                     if c > ord("z") or c < ord("1") or ord("9") < c < ord("A") or ord("Z") < c < ord("a") or chr(c) in "IOl": break  # not base58
@@ -1702,7 +1707,7 @@ class WalletElectrum28(object):
         return data[:4] == b"BIE1"  # Electrum 2.8+ magic
 
     def __init__(self, loading = False):
-        assert loading, 'use load_from_* to create a ' + self.__class__.__name__
+        assert loading, f'use load_from_* to create a {self.__class__.__name__}'
         global hmac, coincurve
         import hmac
 
@@ -1745,10 +1750,14 @@ class WalletElectrum28(object):
             raise ValueError("Encrypted Electrum wallet file is too big")
         MIN_LEN = 37 + 32 + 32  # header + ciphertext + trailer
         if len(data) < MIN_LEN * 4 / 3:
-            raise EOFError("Expected at least {} bytes of text in the Electrum wallet file".format(int(math.ceil(MIN_LEN * 4 / 3))))
+            raise EOFError(
+                f"Expected at least {int(math.ceil(MIN_LEN * 4 / 3))} bytes of text in the Electrum wallet file"
+            )
         data = base64.b64decode(data)
         if len(data) < MIN_LEN:
-            raise EOFError("Expected at least {} bytes of decoded data in the Electrum wallet file".format(MIN_LEN))
+            raise EOFError(
+                f"Expected at least {MIN_LEN} bytes of decoded data in the Electrum wallet file"
+            )
         assert data[:4] == b"BIE1", "wallet file has Electrum 2.8+ magic"
 
         self = cls(loading=True)
@@ -1943,7 +1952,7 @@ class WalletBlockchain(object):
     def is_wallet_file(wallet_file): return None  # there's no easy way to check this
 
     def __init__(self, iter_count, loading = False):
-        assert loading, 'use load_from_* to create a ' + self.__class__.__name__
+        assert loading, f'use load_from_* to create a {self.__class__.__name__}'
         pbkdf2_library_name = load_pbkdf2_library().__name__
         aes_library_name    = load_aes256_library().__name__
         self._iter_count           = iter_count
@@ -2001,7 +2010,7 @@ class WalletBlockchain(object):
                 raise NotImplementedError("Unsupported Blockchain wallet version " + str(data["version"]))
             iter_count = data["pbkdf2_iterations"]
             if not isinstance(iter_count, int) or iter_count < 1:
-                raise ValueError("Invalid Blockchain pbkdf2_iterations " + str(iter_count))
+                raise ValueError(f"Invalid Blockchain pbkdf2_iterations {str(iter_count)}")
             data = data["payload"]
 
             break
@@ -2011,7 +2020,7 @@ class WalletBlockchain(object):
         try:
             data = base64.b64decode(data)
         except TypeError as e:
-            raise ValueError("Can't base64-decode Blockchain wallet: "+str(e))
+            raise ValueError(f"Can't base64-decode Blockchain wallet: {str(e)}")
         if len(data) < 32:
             raise ValueError("Encrypted Blockchain data is too short")
         if len(data) % 16 != 0:
@@ -2219,8 +2228,7 @@ class WalletBlockchainSecondpass(WalletBlockchain):
 
         # Remove ISO 10126 Padding
         pad_len = clear[-1]
-        decrypted = clear[:-pad_len]
-        return decrypted
+        return clear[:-pad_len]
 
     def decrypt_wallet(self, password, iter_count, legacy_decrypt = False):
         from lib.cashaddress import base58
@@ -2292,9 +2300,10 @@ class WalletBlockchainSecondpass(WalletBlockchain):
             data, iter_count = cls._parse_encrypted_blockchain_wallet(data)
         except ValueError as e:
             # This is the one error to expect and ignore which occurs when the wallet isn't encrypted
-            if e.args[0] == "Can't find either version nor payload attributes in Blockchain file":
-                pass
-            else:
+            if (
+                e.args[0]
+                != "Can't find either version nor payload attributes in Blockchain file"
+            ):
                 raise
         except Exception as e:
             error_exit(str(e))
@@ -2313,8 +2322,8 @@ class WalletBlockchainSecondpass(WalletBlockchain):
                 data = cls.decrypt_current(cls, password, salt_and_iv, iter_count, data)
             else:           # v0.0 wallets have three different possible encryption schemes
                 data = cls.decrypt_current(cls, password, salt_and_iv, 10, data) or \
-                       cls.decrypt_current(cls, password, salt_and_iv, 1, data) or \
-                       cls.decrypt_old(cls, password, salt_and_iv, data)
+                           cls.decrypt_current(cls, password, salt_and_iv, 1, data) or \
+                           cls.decrypt_old(cls, password, salt_and_iv, data)
             if not data:
                 error_exit("can't decrypt wallet (wrong main password?)")
 
@@ -2327,7 +2336,9 @@ class WalletBlockchainSecondpass(WalletBlockchain):
         try:
             iter_count = data["options"]["pbkdf2_iterations"]
             if not isinstance(iter_count, int) or iter_count < 1:
-                raise ValueError("Invalid Blockchain second password pbkdf2_iterations " + str(iter_count))
+                raise ValueError(
+                    f"Invalid Blockchain second password pbkdf2_iterations {str(iter_count)}"
+                )
         except KeyError:
             iter_count = 0
         self = cls(iter_count, loading=True)
@@ -2382,7 +2393,7 @@ class WalletBlockchainSecondpass(WalletBlockchain):
             for count, password in enumerate(passwords, 1):
                 if isinstance(salt,str): running_hash = salt.encode() + password
                 if isinstance(salt,bytes): running_hash = salt + password
-                for i in range(iter_count):
+                for _ in range(iter_count):
                     running_hash = l_sha256(running_hash).digest()
                 if running_hash == password_hash:
                     #print("Debug: Matched Second pass (Iter-Count present)")
@@ -2390,7 +2401,6 @@ class WalletBlockchainSecondpass(WalletBlockchain):
                     self.decrypt_wallet(password, iter_count)
                     return password.decode("utf_8", "replace"), count
 
-        # Older wallets used one of three password hashing schemes
         else:
             for count, password in enumerate(passwords, 1):
                 if isinstance(salt,str): running_hash = l_sha256(salt.encode() + password).digest()
@@ -2402,7 +2412,7 @@ class WalletBlockchainSecondpass(WalletBlockchain):
                     self.decrypt_wallet(password, 1)
                     return password.decode("utf_8", "replace"), count
                 # Exactly 10 hashes (the first of which was done above)
-                for i in range(9):
+                for _ in range(9):
                     running_hash = l_sha256(running_hash).digest()
                 if running_hash == password_hash:
                     #print("Debug: Matched Second pass (Exactly 10 hashes)")
@@ -2530,7 +2540,7 @@ class WalletDogechain(object):
         return (b"email" in walletdata and b"two_fa_method" in walletdata)  # Dogechain.info wallets have email and 2fa fields that are fairly unique
 
     def __init__(self, iter_count, loading=False):
-        assert loading, 'use load_from_* to create a ' + self.__class__.__name__
+        assert loading, f'use load_from_* to create a {self.__class__.__name__}'
         pbkdf2_library_name = load_pbkdf2_library().__name__
         aes_library_name = load_aes256_library().__name__
         self._iter_count = iter_count
@@ -2717,7 +2727,7 @@ class WalletMetamask(object):
         return ("\"data\"" in walletdata and "\"iv\"" in walletdata and "\"salt\"" in walletdata)  # Metamask wallets have these three keys in the json (Other supported wallet times have one or the other, but not all three)
 
     def __init__(self, iter_count, loading=False):
-        assert loading, 'use load_from_* to create a ' + self.__class__.__name__
+        assert loading, f'use load_from_* to create a {self.__class__.__name__}'
         pbkdf2_library_name = load_pbkdf2_library().__name__
         aes_library_name = load_aes256_library().__name__
         global normalize
@@ -2841,7 +2851,7 @@ class WalletMetamask(object):
 
     # A bit fragile because it assumes that some specific text is in the first encrypted block,
     def check_decrypted_block(self, unencrypted_block, password):
-        if unencrypted_block[0] == ord("{") or unencrypted_block[0] == ord("[") or unencrypted_block[0] == ord('"'):
+        if unencrypted_block[0] in [ord("{"), ord("["), ord('"')]:
             if b'"' in unencrypted_block[:4]:  # If it really is a json wallet fragment, there will be a double quote in there within the first few characters...
                 try:
                     # Try to decode the decrypted block to ascii, this will pretty much always fail on anything other
@@ -2950,13 +2960,13 @@ class WalletBither(object):
         wallet_file.seek(0)
         wallet_header = wallet_file.read(16)
         # returns "maybe yes" or "definitely no" (mSIGNA wallets are also SQLite 3)
-        if wallet_header[0:-1] == b'SQLite format 3' and wallet_header[-1] == 0:
+        if wallet_header[:-1] == b'SQLite format 3' and wallet_header[-1] == 0:
             return None
         else:
             return False
 
     def __init__(self, loading = False):
-        assert loading, 'use load_from_* to create a ' + self.__class__.__name__
+        assert loading, f'use load_from_* to create a {self.__class__.__name__}'
         # loading crypto libraries is done in load_from_*
 
     def __setstate__(self, state):
@@ -3000,7 +3010,7 @@ class WalletBither(object):
                 wallet_cur = wallet_conn.execute("SELECT password_seed FROM password_seed LIMIT 1")
                 key_data   = wallet_cur.fetchone()
             except sqlite3.OperationalError as e2:
-                raise ValueError("Not a Bither wallet: {}, {}".format(e1, e2))  # it might be an mSIGNA wallet
+                raise ValueError(f"Not a Bither wallet: {e1}, {e2}")
             if not key_data:
                 error_exit("can't find an encrypted key or password seed in the Bither wallet")
             key_data = key_data[0]
@@ -3014,8 +3024,9 @@ class WalletBither(object):
             key_data = key_data.split(":")  # old Bither wallets used ":" as the delimiter
         pubkey_hash = key_data.pop(0) if len(key_data) == 4 else None
         if len(key_data) != 3:
-            error_exit("unrecognized Bither encrypted key format (expected 3-4 slash-delimited elements, found {})"
-                       .format(len(key_data)))
+            error_exit(
+                f"unrecognized Bither encrypted key format (expected 3-4 slash-delimited elements, found {len(key_data)})"
+            )
         (encrypted_key, iv, salt) = key_data
         encrypted_key = base64.b16decode(encrypted_key, casefold=True)
 
@@ -3027,13 +3038,14 @@ class WalletBither(object):
         else:
             flags = 1  # this is the is_compressed flag; if not present it defaults to compressed
             if len(salt) != 8:
-                error_exit("unexpected salt length ({}) in Bither wallet".format(len(salt)))
+                error_exit(f"unexpected salt length ({len(salt)}) in Bither wallet")
 
         # Return a WalletBitcoinj object to do the work if it's compatible with one (it's faster)
         if is_bitcoinj_compatible:
             if len(encrypted_key) != 48:
-                error_exit("unexpected encrypted key length in Bither wallet (expected 48, found {})"
-                           .format(len(encrypted_key)))
+                error_exit(
+                    f"unexpected encrypted key length in Bither wallet (expected 48, found {len(encrypted_key)})"
+                )
             # only need the last 2 encrypted blocks (half of which is padding) plus the salt (don't need the iv)
             bitcoinj_wallet._part_encrypted_key = encrypted_key[-32:]
             bitcoinj_wallet._scrypt_salt = salt
@@ -3042,7 +3054,6 @@ class WalletBither(object):
             bitcoinj_wallet._scrypt_p    = 1
             return bitcoinj_wallet
 
-        # Constuct and return a WalletBither object
         else:
             if not pubkey_hash:
                 error_exit("pubkey hash160 not present in Bither password_seed")

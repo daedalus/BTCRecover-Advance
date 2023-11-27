@@ -38,26 +38,22 @@ class SmartbitClient(BaseClient):
         super(self.__class__, self).__init__(network, PROVIDERNAME, base_url, denominator, *args)
 
     def compose_request(self, category, command='', data='', variables=None, type='blockchain', method='get'):
-        url_path = type + '/' + category
+        url_path = f'{type}/{category}'
         if data:
             if url_path[-1:] != '/':
                 url_path += '/'
             url_path += data
         if command:
-            url_path += '/' + command
+            url_path += f'/{command}'
         return self.request(url_path, variables=variables, method=method)
 
     def _parse_transaction(self, tx):
-        status = 'unconfirmed'
-        if tx['confirmations']:
-            status = 'confirmed'
+        status = 'confirmed' if tx['confirmations'] else 'unconfirmed'
         witness_type = 'legacy'
         if 'inputs' in tx and [ti['witness'] for ti in tx['inputs'] if ti['witness'] and ti['witness'] != ['NULL']]:
             witness_type = 'segwit'
         input_total = tx['input_amount_int']
-        t_time = None
-        if tx['time']:
-            t_time = datetime.fromtimestamp(tx['time'])
+        t_time = datetime.fromtimestamp(tx['time']) if tx['time'] else None
         if tx['coinbase']:
             input_total = tx['output_amount_int']
         t = Transaction(locktime=tx['locktime'], version=int(tx['version']), network=self.network, fee=tx['fee_int'],
@@ -65,11 +61,10 @@ class SmartbitClient(BaseClient):
                         confirmations=tx['confirmations'], block_height=tx['block'], status=status,
                         input_total=input_total, coinbase=tx['coinbase'],
                         output_total=tx['output_amount_int'], witness_type=witness_type)
-        index_n = 0
         if tx['coinbase']:
             t.add_input(prev_hash=b'\00' * 32, output_n=0, value=input_total)
         else:
-            for ti in tx['inputs']:
+            for index_n, ti in enumerate(tx['inputs']):
                 unlocking_script = ti['script_sig']['hex']
                 witness_type = 'legacy'
                 if ti['witness'] and ti['witness'] != ['NULL']:
@@ -80,21 +75,19 @@ class SmartbitClient(BaseClient):
                 t.add_input(prev_hash=ti['txid'], output_n=ti['vout'], unlocking_script=unlocking_script,
                             index_n=index_n, value=ti['value_int'], address=ti['addresses'][0], sequence=ti['sequence'],
                             witness_type=witness_type)
-                index_n += 1
-
-                # if ti['spending_witness']:
-                #     witnesses = b"".join([varstr(to_bytes(x)) for x in ti['spending_witness'].split(",")])
-                #     t.add_input(prev_hash=ti['transaction_hash'], output_n=ti['index'],
-                #                 unlocking_script=witnesses, index_n=index_n, value=ti['value'],
-                #                 address=ti['recipient'], witness_type='segwit')
-                # else:
-                #     t.add_input(prev_hash=ti['transaction_hash'], output_n=ti['index'],
-                #                 unlocking_script_unsigned=ti['script_hex'], index_n=index_n, value=ti['value'],
-                #                 address=ti['recipient'], unlocking_script=ti['spending_signature_hex'])
+                        # if ti['spending_witness']:
+                        #     witnesses = b"".join([varstr(to_bytes(x)) for x in ti['spending_witness'].split(",")])
+                        #     t.add_input(prev_hash=ti['transaction_hash'], output_n=ti['index'],
+                        #                 unlocking_script=witnesses, index_n=index_n, value=ti['value'],
+                        #                 address=ti['recipient'], witness_type='segwit')
+                        # else:
+                        #     t.add_input(prev_hash=ti['transaction_hash'], output_n=ti['index'],
+                        #                 unlocking_script_unsigned=ti['script_hex'], index_n=index_n, value=ti['value'],
+                        #                 address=ti['recipient'], unlocking_script=ti['spending_signature_hex'])
 
 
         for to in tx['outputs']:
-            spent = True if 'spend_txid' in to and to['spend_txid'] else False
+            spent = bool('spend_txid' in to and to['spend_txid'])
             address = ''
             if to['addresses']:
                 address = to['addresses'][0]
@@ -122,23 +115,23 @@ class SmartbitClient(BaseClient):
                 break
         for txid in utxo_list[:max_txs]:
             t = self.gettransaction(txid)
-            for utxo in t.outputs:
-                if utxo.address != address:
-                    continue
-                utxos.append(
-                    {
-                        'address': utxo.address,
-                        'tx_hash': t.hash,
-                        'confirmations': t.confirmations,
-                        'output_n': utxo.output_n,
-                        'input_n': 0,
-                        'block_height': t.block_height,
-                        'fee': t.fee,
-                        'size': t.size,
-                        'value': utxo.value,
-                        'script': to_hexstring(utxo.lock_script),
-                        'date': t.date
-                    })
+            utxos.extend(
+                {
+                    'address': utxo.address,
+                    'tx_hash': t.hash,
+                    'confirmations': t.confirmations,
+                    'output_n': utxo.output_n,
+                    'input_n': 0,
+                    'block_height': t.block_height,
+                    'fee': t.fee,
+                    'size': t.size,
+                    'value': utxo.value,
+                    'script': to_hexstring(utxo.lock_script),
+                    'date': t.date,
+                }
+                for utxo in t.outputs
+                if utxo.address == address
+            )
         return utxos
 
     def gettransaction(self, txid):

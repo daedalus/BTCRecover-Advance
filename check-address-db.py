@@ -79,10 +79,7 @@ if __name__ == "__main__":
 
     found = 0
     not_found = 0
-    checked = 0
-
-    for address, comment in checklist:
-        checked += 1
+    for checked, (address, comment) in enumerate(checklist, start=1):
         if (checked % 100000 == 0):
             print("Checked:", checked, "addresses in current file,", len(addresses),
                   "lines in current addresslist")

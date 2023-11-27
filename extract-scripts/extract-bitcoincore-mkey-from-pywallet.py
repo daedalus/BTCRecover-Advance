@@ -59,7 +59,10 @@ wallet = json.JSONDecoder().raw_decode(cur_block[found_at:].decode())[0]
 
 # Do some sanity checking
 #
-if not all(name in wallet for name in ("nDerivationIterations", "nDerivationMethod", "nID", "salt")):
+if any(
+    name not in wallet
+    for name in ("nDerivationIterations", "nDerivationMethod", "nID", "salt")
+):
     raise ValueError("Unrecognized pywallet format (can't find all mkey attributes)")
 #
 if wallet["nID"] != 1:

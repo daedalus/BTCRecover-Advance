@@ -48,8 +48,8 @@ def _set_opcodes():
             var, count = opcode
         else:
             var = opcode
-        cds.update({count: var})
-        cds_rev.update({var: count})
+        cds[count] = var
+        cds_rev[var] = count
         count += 1
     return cds, cds_rev
 
@@ -67,9 +67,7 @@ def opcode(name, as_bytes=True):
 
     """
     opcode_int = opcodes[name]
-    if as_bytes:
-        return struct.pack('B', opcode_int)
-    return opcode_int
+    return struct.pack('B', opcode_int) if as_bytes else opcode_int
 
 
 opcodenames, opcodes = _set_opcodes()

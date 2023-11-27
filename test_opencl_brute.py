@@ -23,8 +23,9 @@ def test(hashClass, passwordlist, clresult):
 
     # Determine success and print
     correct = [r==c for r,c in zip(clresult, correct_res)]
-    succ = (len(passwordlist) == len(clresult)) and functools.reduce(operator.and_, correct, True)
-    if succ:
+    if succ := (len(passwordlist) == len(clresult)) and functools.reduce(
+        operator.and_, correct, True
+    ):
         print ("Ok m8!")
     else:
         print ("Failed !")
@@ -56,14 +57,12 @@ def sha1_test(opencl_algo, passwordlist):
     test(hashlib.sha1, passwordlist, clresult)
 
 def hmac_test(passwordlist, salt, hashClass, clResult):
-    correct_res = []
-    for pwd in passwordlist:
-        correct_res.append(hmac.new(pwd, salt, hashClass).digest())
-
+    correct_res = [hmac.new(pwd, salt, hashClass).digest() for pwd in passwordlist]
     # Determine success and print
     correct = [r == c for r, c in zip(clResult, correct_res)]
-    succ = (len(passwordlist) == len(clResult)) and functools.reduce(operator.and_, correct, True)
-    if succ:
+    if succ := (len(passwordlist) == len(clResult)) and functools.reduce(
+        operator.and_, correct, True
+    ):
         print("Ok m9!")
     else:
         print("Failed !")
@@ -95,42 +94,44 @@ def sha1_hmac_test(opencl_algo, passwordlist, salt):
     hmac_test(passwordlist, salt, hashlib.sha1, clResult)
 
 def pbkdf2_test(passwordlist, salt, hashName, iters, dklen, clResult):
-    correct_res = []
-    for pwd in passwordlist:
-        correct_res.append(hashlib.pbkdf2_hmac(hashName, pwd, salt, iters, dklen))
-
+    correct_res = [
+        hashlib.pbkdf2_hmac(hashName, pwd, salt, iters, dklen)
+        for pwd in passwordlist
+    ]
     # Determine success and print
     correct = [r == c for r, c in zip(clResult, correct_res)]
-    succ = (len(passwordlist) == len(clResult)) and functools.reduce(operator.and_, correct, True)
-    if succ:
+    if succ := (len(passwordlist) == len(clResult)) and functools.reduce(
+        operator.and_, correct, True
+    ):
         print("Ok m10!")
     else:
         print("Failed !")
         for i in range(len(passwordlist)):
             if clResult[i] == correct_res[i]:
-                print("#{} Succeeded".format(i))
+                print(f"#{i} Succeeded")
             else:
-                print("#{} Failed".format(i))
+                print(f"#{i} Failed")
                 print("clResult: ", clResult[i])
                 print("Hashlib: ", correct_res[i])
 
 def pbkdf2_saltlist_test(password, saltlist, hashName, iters, dklen, clResult):
-    correct_res = []
-    for salt in saltlist:
-        correct_res.append(hashlib.pbkdf2_hmac(hashName, password, salt, iters, dklen))
-
+    correct_res = [
+        hashlib.pbkdf2_hmac(hashName, password, salt, iters, dklen)
+        for salt in saltlist
+    ]
     # Determine success and print
     correct = [r == c for r, c in zip(clResult, correct_res)]
-    succ = (len(saltlist) == len(clResult)) and functools.reduce(operator.and_, correct, True)
-    if succ:
+    if succ := (len(saltlist) == len(clResult)) and functools.reduce(
+        operator.and_, correct, True
+    ):
         print("Ok m10!")
     else:
         print("Failed !")
         for i in range(len(saltlist)):
             if clResult[i] == correct_res[i]:
-                print("#{} Succeeded".format(i))
+                print(f"#{i} Succeeded")
             else:
-                print("#{} Failed".format(i))
+                print(f"#{i} Failed")
                 print("clResult: ", clResult[i])
                 print("Hashlib: ", correct_res[i])
 
@@ -197,14 +198,15 @@ def scrypt_test(scrypt_opencl_algos, passwords, N_value=15, r_value=3, p_value=1
 
     # Determine success and print
     correct = [r == c for r, c in zip(clResult, correct_res)]
-    succ = (len(passwords) == len(clResult)) and functools.reduce(operator.and_, correct, True)
-    if succ:
+    if succ := (len(passwords) == len(clResult)) and functools.reduce(
+        operator.and_, correct, True
+    ):
         print("Ok m11!")
     else:
         print("Failed !")
         for i in range(len(passwords)):
             if clResult[i] == correct_res[i]:
-                print("#{} succeeded".format(i))
+                print(f"#{i} succeeded")
             else:
                 print(i)
                 print(clResult[i])
@@ -213,7 +215,7 @@ def scrypt_test(scrypt_opencl_algos, passwords, N_value=15, r_value=3, p_value=1
 def test_iterations(passwordlist, hashClass, iters, clResult):
     hashlib_passwords = []
     for password in passwordlist:
-        for i in range(iters):
+        for _ in range(iters):
             password = hashClass(password).digest()
         hashlib_passwords.append(password)
 
@@ -223,7 +225,7 @@ def test_iterations(passwordlist, hashClass, iters, clResult):
         print("Failed !")
         for i in range(len(passwordlist)):
             if clResult[i] == hashlib_passwords[i]:
-                print("#{} succeeded".format(i))
+                print(f"#{i} succeeded")
             else:
                 print(i)
                 print(clResult[i])
@@ -231,7 +233,7 @@ def test_iterations(passwordlist, hashClass, iters, clResult):
 
 def hash_iterations_md5_test(opencl_algo, passwordlist, iters):
     print()
-    print("Testing md5 " + str(iters) + " rounds")
+    print(f"Testing md5 {str(iters)} rounds")
     ctx = opencl_algo.cl_hash_iterations_init("md5")
 
     for i in range(len(passwordlist)):
@@ -243,7 +245,7 @@ def hash_iterations_md5_test(opencl_algo, passwordlist, iters):
 
 def hash_iterations_sha1_test(opencl_algo, passwordlist, iters):
     print()
-    print("Testing sha1 " + str(iters) + " rounds")
+    print(f"Testing sha1 {str(iters)} rounds")
     ctx = opencl_algo.cl_hash_iterations_init("sha1")
 
     for i in range(len(passwordlist)):
@@ -255,7 +257,7 @@ def hash_iterations_sha1_test(opencl_algo, passwordlist, iters):
 
 def hash_iterations_sha256_test(opencl_algo, passwordlist, iters):
     print()
-    print("Testing sha256 " + str(iters) + " rounds")
+    print(f"Testing sha256 {str(iters)} rounds")
     ctx = opencl_algo.cl_hash_iterations_init("sha256")
 
     for i in range(len(passwordlist)):
@@ -267,7 +269,7 @@ def hash_iterations_sha256_test(opencl_algo, passwordlist, iters):
 
 def hash_iterations_sha512_test(opencl_algo, passwordlist, iters):
     print()
-    print("Testing sha512 " + str(iters) + " rounds")
+    print(f"Testing sha512 {str(iters)} rounds")
     ctx = opencl_algo.cl_hash_iterations_init("sha512")
 
     for i in range(len(passwordlist)):
@@ -299,9 +301,6 @@ def main(argv):
     #passwordlist = [b'password', b'hmm', b'trolololl', b'madness']
     passwordlist = [b'btcr-test-password:\x02', b'btcr-test-password:p2pkh\x02', b'btcr-test-password:p2wpkh-p2sh\x02', b'btcr-test-password:p2wpkh-p2shp2pkh\x02', b'btcr-test-password:p2pkhp2wpkh-p2sh\x02', b'btcr-test-password:p2wpkh\x02', b'btcr-test-password:p2wpkhp2pkh\x02', b'btcr-test-password:p2pkhp2wpkh\x02']
     import itertools
-    #salts = []
-    #for i in range(1024):
-        #salts.append(b"aaaaa" + str(i).encode())
     #    salts.append(b"aaaaabbbbbcccccdddddeeeeefffffggggghhhhhiiiii" + str(i).encode())
     salts = [b"salty123",b"salty123",b"salty12", b"mnemonic"]
     #salts = [b'btcr-test-password', b'btcr-test-password']
@@ -312,7 +311,7 @@ def main(argv):
     # Call the tests
 
     for salt in salts:
-        print("Using salt: %s" % salt)
+        print(f"Using salt: {salt}")
         md5_test(opencl_algos,passwordlist)
         sha1_test(opencl_algos,passwordlist)
         sha256_test(opencl_algos,passwordlist)

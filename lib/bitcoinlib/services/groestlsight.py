@@ -36,17 +36,14 @@ class GroestlsightClient(BaseClient):
     def compose_request(self, category, data, cmd='', variables=None, method='get', offset=0):
         url_path = category
         if data:
-            url_path += '/' + data + '/' + cmd
+            url_path += f'/{data}/{cmd}'
         if variables is None:
             variables = {}
         variables.update({'from': offset, 'to': offset+REQUEST_LIMIT})
         return self.request(url_path, variables, method=method)
 
     def _convert_to_transaction(self, tx):
-        if tx['confirmations']:
-            status = 'confirmed'
-        else:
-            status = 'unconfirmed'
+        status = 'confirmed' if tx['confirmations'] else 'unconfirmed'
         fees = None if 'fees' not in tx else int(round(float(tx['fees']) * self.units, 0))
         value_in = 0 if 'valueIn' not in tx else tx['valueIn']
         isCoinbase = False
@@ -70,8 +67,12 @@ class GroestlsightClient(BaseClient):
                             double_spend=False if ti['doubleSpentTxID'] is None else ti['doubleSpentTxID'])
         for to in tx['vout']:
             value = int(round(float(to['value']) * self.units, 0))
-            t.add_output(value=value, lock_script=to['scriptPubKey']['hex'],
-                         spent=True if to['spentTxId'] else False, output_n=to['n'])
+            t.add_output(
+                value=value,
+                lock_script=to['scriptPubKey']['hex'],
+                spent=bool(to['spentTxId']),
+                output_n=to['n'],
+            )
         return t
 
     def getbalance(self, addresslist):
@@ -140,6 +141,4 @@ class GroestlsightClient(BaseClient):
 
     def mempool(self, txid):
         res = self.compose_request('tx', txid)
-        if res['confirmations'] == 0:
-            return res['txid']
-        return []
+        return res['txid'] if res['confirmations'] == 0 else []

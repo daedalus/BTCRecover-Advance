@@ -320,23 +320,17 @@ class BIP32Ed25519:
         assert 0 <= i < 2**32
 
         i_bytes = i.to_bytes(4, 'little')
-        # trace("public_child_key/AP      : %s"%binascii.hexlify(AP))
-        # trace("public_child_key/cP      : %s"%binascii.hexlify(cP))
-        # trace("public_child_key/i       : %.04x"%i)
-
-        #compute Z,c
-        if i < 2**31:
-            # regular child
-            # trace("regular Z input           : %s"%binascii.hexlify(b'\x02' + AP + i_bytes))
-            Z = _Fk(b'\x02' + AP + i_bytes, cP)
-            # trace("regular c input           : %s"%binascii.hexlify(b'\x03' + AP + i_bytes))
-            c = _Fk(b'\x03' + AP + i_bytes, cP)[32:]
-        else:
+        if i >= 2**31:
             # harderned child
             # trace("harderned input:hardened path for public path is not possible")
             # LEAVE("public_child_key ")
             return None
 
+        # regular child
+        # trace("regular Z input           : %s"%binascii.hexlify(b'\x02' + AP + i_bytes))
+        Z = _Fk(b'\x02' + AP + i_bytes, cP)
+        # trace("regular c input           : %s"%binascii.hexlify(b'\x03' + AP + i_bytes))
+        c = _Fk(b'\x03' + AP + i_bytes, cP)[32:]
         # trace("public_child_key/Z       : %s"%binascii.hexlify(Z))
         # trace("public_child_key/c       : %s"%binascii.hexlify(c))
 
@@ -391,10 +385,9 @@ class BIP32Ed25519:
 
         """
 
-        # ENTER("mnemonic_to_seed")
-        seed = hashlib.pbkdf2_hmac('sha512', _NFKDbytes(mnemonic), _NFKDbytes(prefix+passphrase), 2048)
-        # LEAVE("mnemonic_to_seed")
-        return seed
+        return hashlib.pbkdf2_hmac(
+            'sha512', _NFKDbytes(mnemonic), _NFKDbytes(prefix + passphrase), 2048
+        )
 
 
     def derive_seed(self, path, seed, private):
@@ -418,11 +411,7 @@ class BIP32Ed25519:
           ((kLP, kRP), AP, cP) = root
           node = (AP,cP)
         for i in path.split('/'):
-            if i.endswith("'"):
-                i = int(i[:-1]) + 2**31
-            else:
-                i = int(i)
-
+            i = int(i[:-1]) + 2**31 if i.endswith("'") else int(i)
             if private:
               node = self.private_child_key(node, i)
               ((kLP, kRP), AP, cP) = node
@@ -462,38 +451,23 @@ class BIP32Ed25519:
 if __name__ == "__main__":
 
     o = BIP32Ed25519()
-    if False:
-      for path in ("42'/1/2", "42'/3'/5"):
-          print("*************************************")
-          print("CHAIN: %s"%path)
-          print()
-          node = o.derive_mnemonic(True, path, u'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about')
-          ((kL, kR), A, c) = node
-          print("  kL:%s" % binascii.hexlify(kL))
-          print("  kR:%s" % binascii.hexlify(kR))
-          print("   c:%s" % binascii.hexlify(c))
-          print("   A:%s" % binascii.hexlify(A))
-          print()
-          print()
+    for path in ("42/1",): #
+        print("*************************************")
+        print(f"CHAIN: {path}")
+        print("private derivation")
+        node = o.derive_mnemonic(True, path, u'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about')
+        ((kL, kR), A, c) = node
+        print(f"  kL:{binascii.hexlify(kL)}")
+        print(f"  kR:{binascii.hexlify(kR)}")
+        print(f"   c:{binascii.hexlify(c)}")
+        print(f"   A:{binascii.hexlify(A)}")
+        print()
 
-    if True:
-      for path in ("42/1",): #
-          print("*************************************")
-          print("CHAIN: %s"%path)
-          print("private derivation")
-          node = o.derive_mnemonic(True, path, u'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about')
-          ((kL, kR), A, c) = node
-          print("  kL:%s" % binascii.hexlify(kL))
-          print("  kR:%s" % binascii.hexlify(kR))
-          print("   c:%s" % binascii.hexlify(c))
-          print("   A:%s" % binascii.hexlify(A))
-          print()
-
-          print("=== public derivation")
-          node = o.derive_mnemonic(False, path, u'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about')
-          (A, c) = node
-          print("   c:%s" % binascii.hexlify(c))
-          print("   A:%s" % binascii.hexlify(A))
-          print()
-          print()
+        print("=== public derivation")
+        node = o.derive_mnemonic(False, path, u'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about')
+        (A, c) = node
+        print(f"   c:{binascii.hexlify(c)}")
+        print(f"   A:{binascii.hexlify(A)}")
+        print()
+        print()
 

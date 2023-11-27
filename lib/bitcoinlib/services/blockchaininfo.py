@@ -39,25 +39,23 @@ class BlockchainInfoClient(BaseClient):
     def compose_request(self, cmd, parameter='', variables=None, method='get'):
         url_path = cmd
         if parameter:
-            url_path += '/' + parameter
+            url_path += f'/{parameter}'
         return self.request(url_path, variables, method=method)
 
     def getbalance(self, addresslist):
         addresses = {'active': '|'.join(addresslist)}
         res = self.compose_request('balance', variables=addresses)
-        balance = 0
-        for address in res:
-            balance += res[address]['final_balance']
-        return balance
+        return sum(res[address]['final_balance'] for address in res)
 
     def getutxos(self, address, after_txid='', max_txs=MAX_TRANSACTIONS):
-        utxos = []
         variables = {'active': address, 'limit': 1000}
         res = self.compose_request('unspent', variables=variables)
         if len(res['unspent_outputs']) > 299:
-            _logger.info("BlockchainInfoClient: Large number of outputs for address %s, "
-                            "UTXO list may be incomplete" % address)
+            _logger.info(
+                f"BlockchainInfoClient: Large number of outputs for address {address}, UTXO list may be incomplete"
+            )
         res['unspent_outputs'].sort(key=lambda x: x['confirmations'])
+        utxos = []
         for utxo in res['unspent_outputs']:
             if utxo['tx_hash_big_endian'] == after_txid:
                 break
@@ -99,9 +97,7 @@ class BlockchainInfoClient(BaseClient):
         t.network_name = self.network
         t.locktime = tx['lock_time']
         t.version = struct.pack('>L', tx['ver'])
-        t.input_total = input_total
-        if t.coinbase:
-            t.input_total = t.output_total
+        t.input_total = t.output_total if t.coinbase else input_total
         t.fee = t.input_total - t.output_total
         return t
 

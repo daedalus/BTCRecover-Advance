@@ -58,7 +58,7 @@ def bech32_create_checksum(hrp: str, data: Iterable[int]) -> List[int]:
 def bech32_encode(hrp: str, data: Iterable[int]) -> str:
     """Compute a Bech32 string given HRP and data values."""
     combined = list(data) + bech32_create_checksum(hrp, data)
-    return hrp + "1" + "".join([CHARSET[d] for d in combined])
+    return f"{hrp}1" + "".join([CHARSET[d] for d in combined])
 
 
 def bech32_decode(bech: str) -> Union[Tuple[None, None], Tuple[str, List[int]]]:
@@ -71,13 +71,11 @@ def bech32_decode(bech: str) -> Union[Tuple[None, None], Tuple[str, List[int]]]:
     pos = bech.rfind("1")
     if pos < 1 or pos > 83 or pos + 7 > len(bech):  # or len(bech) > 90:
         return (None, None)
-    if not all(x in CHARSET for x in bech[pos + 1 :]):
+    if any(x not in CHARSET for x in bech[pos + 1 :]):
         return (None, None)
     hrp = bech[:pos]
     data = [CHARSET.find(x) for x in bech[pos + 1 :]]
-    if not bech32_verify_checksum(hrp, data):
-        return (None, None)
-    return (hrp, data[:-6])
+    return (hrp, data[:-6]) if bech32_verify_checksum(hrp, data) else (None, None)
 
 
 def convertbits(data: Iterable[int], frombits: int, tobits: int, pad: bool = True) -> Optional[List[int]]:
@@ -125,6 +123,4 @@ def encode(hrp: str, witver: int, witprog: Iterable[int]) -> Optional[str]:
     if five_bit_witprog is None:
         return None
     ret = bech32_encode(hrp, [witver] + five_bit_witprog)
-    if decode(hrp, ret) == (None, None):
-        return None
-    return ret
+    return None if decode(hrp, ret) == (None, None) else ret

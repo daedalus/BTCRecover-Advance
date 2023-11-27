@@ -36,9 +36,9 @@ class BlockCypher(BaseClient):
         super(self.__class__, self).__init__(network, PROVIDERNAME, base_url, denominator, *args)
 
     def compose_request(self, function, data, parameter='', variables=None, method='get'):
-        url_path = function + '/' + data
+        url_path = f'{function}/{data}'
         if parameter:
-            url_path += '/' + parameter
+            url_path += f'/{parameter}'
         if variables is None:
             variables = {}
         if self.api_key:
@@ -59,14 +59,15 @@ class BlockCypher(BaseClient):
     def getutxos(self, address, after_txid='', max_txs=MAX_TRANSACTIONS):
         address = self._address_convert(address)
         res = self.compose_request('addrs', address.address, variables={'unspentOnly': 1, 'limit': 2000})
-        transactions = []
         if not isinstance(res, list):
             res = [res]
+        transactions = []
         for a in res:
             txrefs = a.setdefault('txrefs', []) + a.get('unconfirmed_txrefs', [])
             if len(txrefs) > 500:
-                _logger.warning("BlockCypher: Large number of transactions for address %s, "
-                                "Transaction list may be incomplete" % address)
+                _logger.warning(
+                    f"BlockCypher: Large number of transactions for address {address}, Transaction list may be incomplete"
+                )
             for tx in txrefs:
                 if tx['tx_hash'] == after_txid:
                     break
@@ -97,21 +98,21 @@ class BlockCypher(BaseClient):
         else:
             t.status = 'unconfirmed'
         t.confirmations = tx['confirmations']
-        t.block_height = tx['block_height'] if tx['block_height'] > 0 else 0
+        t.block_height = max(tx['block_height'], 0)
         t.block_hash = tx.get('block_hash')
         t.fee = tx['fees']
         t.rawtx = tx['hex']
-        t.size = int(len(tx['hex']) / 2)
+        t.size = len(tx['hex']) // 2
         t.network = self.network
-        t.input_total = 0
-        if t.coinbase:
-            t.input_total = t.output_total
+        t.input_total = t.output_total if t.coinbase else 0
         if len(t.inputs) != len(tx['inputs']):
             raise ClientError("Invalid number of inputs provided. Raw tx: %d, blockcypher: %d" %
                               (len(t.inputs), len(tx['inputs'])))
         for n, i in enumerate(t.inputs):
-            if not t.coinbase and not (tx['inputs'][n]['output_index'] == i.output_n_int and
-                        tx['inputs'][n]['prev_hash'] == to_hexstring(i.prev_hash)):
+            if not t.coinbase and (
+                tx['inputs'][n]['output_index'] != i.output_n_int
+                or tx['inputs'][n]['prev_hash'] != to_hexstring(i.prev_hash)
+            ):
                 raise ClientError("Transaction inputs do not match raw transaction")
             if 'output_value' in tx['inputs'][n]:
                 i.value = tx['inputs'][n]['output_value']
@@ -126,11 +127,11 @@ class BlockCypher(BaseClient):
         return t
 
     def gettransactions(self, address, after_txid='', max_txs=MAX_TRANSACTIONS):
-        txs = []
         address = self._address_convert(address)
         res = self.compose_request('addrs', address.address, variables={'unspentOnly': 0, 'limit': 2000})
         if not isinstance(res, list):
             res = [res]
+        txs = []
         for a in res:
             if 'txrefs' not in a:
                 continue
@@ -141,8 +142,9 @@ class BlockCypher(BaseClient):
                 if t['tx_hash'] == after_txid:
                     txids = []
             if len(txids) > 500:
-                _logger.info("BlockCypher: Large number of transactions for address %s, "
-                                "Transaction list may be incomplete" % address.address_orig)
+                _logger.info(
+                    f"BlockCypher: Large number of transactions for address {address.address_orig}, Transaction list may be incomplete"
+                )
             for txid in txids[:max_txs]:
                 t = self.gettransaction(txid)
                 txs.append(t)
@@ -160,10 +162,7 @@ class BlockCypher(BaseClient):
 
     def estimatefee(self, blocks):
         res = self.compose_request('', '')
-        if blocks <= 10:
-            return res['medium_fee_per_kb']
-        else:
-            return res['low_fee_per_kb']
+        return res['medium_fee_per_kb'] if blocks <= 10 else res['low_fee_per_kb']
 
     def blockcount(self):
         return self.compose_request('', '')['height']

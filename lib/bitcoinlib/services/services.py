@@ -86,28 +86,31 @@ class Service(object):
         try:
             self.providers_defined = json.loads(f.read())
         except json.decoder.JSONDecodeError as e:  # pragma: no cover
-            errstr = "Error reading provider definitions from %s: %s" % (fn, e)
+            errstr = f"Error reading provider definitions from {fn}: {e}"
             _logger.warning(errstr)
             raise ServiceError(errstr)
         f.close()
 
-        provider_list = list([self.providers_defined[x]['provider'] for x in self.providers_defined])
+        provider_list = [
+            self.providers_defined[x]['provider'] for x in self.providers_defined
+        ]
         if providers is None:
             providers = []
         if not isinstance(providers, list):
             providers = [providers]
         for p in providers:
             if p not in provider_list:
-                raise ServiceError("Provider '%s' not found in provider definitions" % p)
+                raise ServiceError(f"Provider '{p}' not found in provider definitions")
 
         self.providers = {}
         for p in self.providers_defined:
-            if (self.providers_defined[p]['network'] == network or self.providers_defined[p]['network'] == '') and \
-                    (not providers or self.providers_defined[p]['provider'] in providers):
-                self.providers.update({p: self.providers_defined[p]})
+            if self.providers_defined[p]['network'] in [network, ''] and (
+                not providers or self.providers_defined[p]['provider'] in providers
+            ):
+                self.providers[p] = self.providers_defined[p]
 
         if not self.providers:
-            raise ServiceError("No providers found for network %s" % network)
+            raise ServiceError(f"No providers found for network {network}")
         self.min_providers = min_providers
         self.max_providers = max_providers
         self.results = {}
@@ -141,7 +144,7 @@ class Service(object):
                 break
             try:
                 if sp not in ['bitcoind', 'litecoind', 'dashd', 'caching'] and not self.providers[sp]['url'] and \
-                        self.network.name != 'bitcoinlib_test':
+                            self.network.name != 'bitcoinlib_test':
                     continue
                 client = getattr(services, self.providers[sp]['provider'])
                 providerclient = getattr(client, self.providers[sp]['client_class'])
@@ -157,7 +160,7 @@ class Service(object):
                     self.errors.update(
                         {sp: 'Received empty response'}
                     )
-                    _logger.info("Empty response from %s when calling %s" % (sp, method))
+                    _logger.info(f"Empty response from {sp} when calling {method}")
                     continue
                 self.results.update(
                     {sp: res}
@@ -175,13 +178,15 @@ class Service(object):
                     # -- Use this to debug specific Services errors --
                     # from pprint import pprint
                     # pprint(self.errors)
-                _logger.info("%s.%s(%s) Error %s" % (sp, method, arguments, e))
+                _logger.info(f"{sp}.{method}({arguments}) Error {e}")
 
             if self.resultcount >= self.max_providers:
                 break
 
         if not self.resultcount:
-            _logger.warning("No successfull response from any serviceprovider: %s" % list(self.providers.keys()))
+            _logger.warning(
+                f"No successfull response from any serviceprovider: {list(self.providers.keys())}"
+            )
             return False
         return list(self.results.values())[0]
 
@@ -203,8 +208,9 @@ class Service(object):
 
         tot_balance = 0
         while addresslist:
-            balance = self._provider_execute('getbalance', addresslist[:addresses_per_request])
-            if balance:
+            if balance := self._provider_execute(
+                'getbalance', addresslist[:addresses_per_request]
+            ):
                 tot_balance += balance
             addresslist = addresslist[addresses_per_request:]
         return tot_balance
@@ -308,14 +314,14 @@ class Service(object):
 
         # Get (extra) transactions from service providers
         txs = []
-        if not(db_addr and db_addr.last_block >= self._blockcount):
+        if not db_addr or db_addr.last_block < self._blockcount:
             txs = self._provider_execute('gettransactions', address, qry_after_txid,  max_txs)
             if txs == False:
                 raise ServiceError("Error when retrieving transactions from service provider")
 
         # Store transactions and address in cache
         # - disable cache if comparing providers or if after_txid is used and no cache is available
-        if self.min_providers <= 1 and not(after_txid and not db_addr):
+        if self.min_providers <= 1 and (not after_txid or db_addr):
         # if self.min_providers <= 1:
             last_block = self._blockcount
             self.complete = True
@@ -347,8 +353,7 @@ class Service(object):
         """
         txid = to_hexstring(txid)
         self.results_cache_n = 0
-        rawtx = self.cache.getrawtransaction(txid)
-        if rawtx:
+        if rawtx := self.cache.getrawtransaction(txid):
             self.results_cache_n = 1
             return rawtx
         return self._provider_execute('getrawtransaction', txid)
@@ -477,7 +482,7 @@ class Cache(object):
         t.update_totals()
         if t.coinbase:
             t.input_total = t.output_total
-        _logger.info("Retrieved transaction %s from cache" % t.hash)
+        _logger.info(f"Retrieved transaction {t.hash} from cache")
         return t
 
     def gettransaction(self, txid):
@@ -525,29 +530,29 @@ class Cache(object):
         """
         if not SERVICE_CACHING_ENABLED:
             return []
-        db_addr = self.getaddress(address)
-        txs = []
-        if db_addr:
+        if db_addr := self.getaddress(address):
             if after_txid:
-                after_tx = self.session.query(dbCacheTransaction).\
-                    filter_by(txid=after_txid, network_name=self.network.name).scalar()
-                if after_tx:
-                    db_txs = self.session.query(dbCacheTransaction).join(dbCacheTransactionNode).\
-                        filter(dbCacheTransactionNode.address == address,
-                               dbCacheTransaction.block_height >= after_tx.block_height).\
-                        order_by(dbCacheTransaction.block_height, dbCacheTransaction.order_n).all()
-                    db_txs2 = []
-                    for d in db_txs:
-                        db_txs2.append(d)
-                        if d.txid == after_txid:
-                            db_txs2 = []
-                    db_txs = db_txs2
-                else:
+                if not (
+                    after_tx := self.session.query(dbCacheTransaction)
+                    .filter_by(txid=after_txid, network_name=self.network.name)
+                    .scalar()
+                ):
                     return []
+                db_txs = self.session.query(dbCacheTransaction).join(dbCacheTransactionNode).\
+                        filter(dbCacheTransactionNode.address == address,
+                           dbCacheTransaction.block_height >= after_tx.block_height).\
+                        order_by(dbCacheTransaction.block_height, dbCacheTransaction.order_n).all()
+                db_txs2 = []
+                for d in db_txs:
+                    db_txs2.append(d)
+                    if d.txid == after_txid:
+                        db_txs2 = []
+                db_txs = db_txs2
             else:
                 db_txs = self.session.query(dbCacheTransaction).join(dbCacheTransactionNode). \
-                    filter(dbCacheTransactionNode.address == address). \
-                    order_by(dbCacheTransaction.block_height, dbCacheTransaction.order_n).all()
+                        filter(dbCacheTransactionNode.address == address). \
+                        order_by(dbCacheTransaction.block_height, dbCacheTransaction.order_n).all()
+            txs = []
             for db_tx in db_txs:
                 txs.append(self._parse_db_transaction(db_tx))
                 if len(txs) >= max_txs:
@@ -567,9 +572,7 @@ class Cache(object):
         if not SERVICE_CACHING_ENABLED:
             return False
         tx = self.session.query(dbCacheTransaction).filter_by(txid=txid, network_name=self.network.name).first()
-        if not tx:
-            return False
-        return tx.raw
+        return False if not tx else tx.raw
 
     def getutxos(self, address, after_txid=''):
         """
@@ -634,9 +637,12 @@ class Cache(object):
             varname = 'fee_medium'
         else:
             varname = 'fee_low'
-        dbvar = self.session.query(dbCacheVars).filter_by(varname=varname, network_name=self.network.name).\
-                                                filter(dbCacheVars.expires > datetime.datetime.now()).scalar()
-        if dbvar:
+        if (
+            dbvar := self.session.query(dbCacheVars)
+            .filter_by(varname=varname, network_name=self.network.name)
+            .filter(dbCacheVars.expires > datetime.datetime.now())
+            .scalar()
+        ):
             return int(dbvar.value)
         return False
 
@@ -654,10 +660,7 @@ class Cache(object):
         qr = self.session.query(dbCacheVars).filter_by(varname='blockcount', network_name=self.network.name)
         if not never_expires:
             qr = qr.filter(dbCacheVars.expires > datetime.datetime.now())
-        dbvar = qr.scalar()
-        if dbvar:
-            return int(dbvar.value)
-        return False
+        return int(dbvar.value) if (dbvar := qr.scalar()) else False
 
     def store_blockcount(self, blockcount):
         """
@@ -722,9 +725,9 @@ class Cache(object):
 
         try:
             self.session.commit()
-            _logger.info("Added transaction %s to cache" % t.hash)
-        except Exception as e:    # pragma: no cover
-            _logger.warning("Caching failure tx: %s" % e)
+            _logger.info(f"Added transaction {t.hash} to cache")
+        except Exception as e:# pragma: no cover
+            _logger.warning(f"Caching failure tx: {e}")
 
     def store_address(self, address, last_block, balance=0):
         """
@@ -746,8 +749,8 @@ class Cache(object):
         self.session.merge(new_address)
         try:
             self.session.commit()
-        except Exception as e:    # pragma: no cover
-            _logger.warning("Caching failure addr: %s" % e)
+        except Exception as e:# pragma: no cover
+            _logger.warning(f"Caching failure addr: {e}")
 
     def store_estimated_fee(self, blocks, fee):
         """

@@ -40,9 +40,9 @@ class BitapsClient(BaseClient):
         super(self.__class__, self).__init__(network, PROVIDERNAME, base_url, denominator, *args)
 
     def compose_request(self, category, command='', data='', variables=None, type='blockchain', method='get'):
-        url_path = type + '/' + category
+        url_path = f'{type}/{category}'
         if command:
-            url_path += '/' + command
+            url_path += f'/{command}'
         if data:
             if url_path[-1:] != '/':
                 url_path += '/'

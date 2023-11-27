@@ -40,7 +40,7 @@ print("\n=== Change base: convert from base N to base M ===")
 for example in examples:
     print("\n>>> change_base%s     # Change from base%d to base%d" %
           (example, example[1], example[2]))
-    print("%s" % change_base(*example))
+    print(f"{change_base(*example)}")
 
 #
 # Address and Script conversion examples
@@ -49,7 +49,9 @@ print("\n=== Conversion of Bitcoin Addresses to Public Key Hashes ===")
 addrs = ['12ooWd8Xag7hsgP9PBPnmyGe36VeUrpMSH', '1111111111111111111114oLvT2',
          '1QLbz7JHiBTspS962RLKV8GndWFwi5j6Qr']
 for addr in addrs:
-    print("Public Key Hash of address '%s' is '%s'" % (addr, addr_to_pubkeyhash(addr, True)))
+    print(
+        f"Public Key Hash of address '{addr}' is '{addr_to_pubkeyhash(addr, True)}'"
+    )
 
 print("\n=== From Public Key Hashes to address ===")
 print(pubkeyhash_to_addr('13d215d212cd5188ae02c5635faabdc4d7d4ec91'))
@@ -71,7 +73,9 @@ print("\n=== Convert DER encoded signature ===")
 print(convert_der_sig(to_bytes(der_signature)))
 
 print("\n=== Varbyte Int conversions ===")
-print("Number 1000 as Varbyte Integer (hexstring): %s" % to_hexstring(int_to_varbyteint(1000)))
+print(
+    f"Number 1000 as Varbyte Integer (hexstring): {to_hexstring(int_to_varbyteint(1000))}"
+)
 print("Converted back (3 is size in bytes: 1 size byte + integer in bytes): ", varbyteint_to_int(to_bytes('fde803')))
 
 # Normalize data

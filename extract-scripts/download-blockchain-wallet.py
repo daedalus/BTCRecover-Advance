@@ -43,7 +43,9 @@ else:
     sys.exit(2)
 
 # Refuse to overwrite an existing file
-assert not os.path.exists(filename), filename + " already exists, won't overwrite"
+assert not os.path.exists(
+    filename
+), f"{filename} already exists, won't overwrite"
 
 print("Please enter your wallet's ID (e.g. 9bb4c672-563e-4806-9012-a3e8f86a0eca)")
 wallet_id = str(uuid.UUID(input("> ").strip()))
@@ -54,12 +56,12 @@ auth_token = None
 def do_request(query, body = None):
     if body is None:
         assert "?" in query
-        query += "&api_code=" + API_CODE
+        query += f"&api_code={API_CODE}"
     req = urllib.request.Request(BASE_URL + query)
     if body is not None:
-        req.data = ((body+"&" if body else "") + "api_code=" + API_CODE).encode()
+        req.data = ((f"{body}&" if body else "") + "api_code=" + API_CODE).encode()
     if auth_token:
-        req.add_header("authorization", "Bearer " + auth_token)
+        req.add_header("authorization", f"Bearer {auth_token}")
     try:
         return urllib.request.urlopen(req, context=ctx)  # fixed because otherwise SSL errors abound
     except TypeError:
@@ -84,11 +86,8 @@ except urllib.error.HTTPError:
 
 # Try to download the wallet
 try:
-    wallet_data = do_request_json(
-        "wallet/{}?format=json".format(wallet_id)
-    ).get("payload")
+    wallet_data = do_request_json(f"wallet/{wallet_id}?format=json").get("payload")
 
-# If IP address / email verification is required
 except urllib.error.HTTPError as e:
     error_msg = e.read()
     try:
@@ -109,9 +108,7 @@ except urllib.error.HTTPError as e:
     print()
 
     # Try again to download the wallet (this shouldn't fail)
-    wallet_data = do_request_json(
-        "wallet/{}?format=json".format(wallet_id)
-    ).get("payload")
+    wallet_data = do_request_json(f"wallet/{wallet_id}?format=json").get("payload")
 
 # If there was no payload data, then 2FA is enabled
 while not wallet_data:
@@ -121,9 +118,9 @@ while not wallet_data:
 
     try:
         # Send the 2FA to the server and download the wallet
-        wallet_data = do_request("wallet",
-            "method=get-wallet&guid={}&payload={}&length={}"
-            .format(wallet_id, two_factor, len(two_factor))
+        wallet_data = do_request(
+            "wallet",
+            f"method=get-wallet&guid={wallet_id}&payload={two_factor}&length={len(two_factor)}",
         ).read()
 
     except urllib.error.HTTPError as e:
@@ -136,4 +133,4 @@ with open(filename, "wb") as wallet_file:
     else:
         wallet_file.write(wallet_data)
 
-print("Wallet file saved as " + filename)
+print(f"Wallet file saved as {filename}")

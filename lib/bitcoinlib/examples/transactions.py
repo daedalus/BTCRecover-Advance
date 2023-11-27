@@ -25,7 +25,7 @@ t.add_output(99900000, '1runeksijzfVxyrpiyCY2LCBvYsSiFsCm')
 t.sign(ki.private_byte)
 pprint(t.as_dict())
 print("Raw:", binascii.hexlify(t.raw()))
-print("Verified %s " % t.verify())
+print(f"Verified {t.verify()} ")
 print(t.raw_hex())
 
 print("\n=== Create and sign transaction with transactions Input and Output objects ===")
@@ -39,7 +39,7 @@ t = Transaction([transaction_input], [transaction_output])
 t.sign(ki.private_byte)
 print("Raw:", binascii.hexlify(t.raw()))
 pprint(t.as_dict())
-print("Verified %s " % t.verify())
+print(f"Verified {t.verify()} ")
 
 print("\n=== Create and sign Testnet Transaction with Multiple OUTPUTS using keys from Wallet class "
       "'TestNetWallet' example"
@@ -51,14 +51,15 @@ amount_per_address = 27172943
 output_addresses = ['mn6xJw1Cp2gLcSSQAYPnX4G2M6GARGyX5j', 'n3pdL33MgTA316odzeydhNrcKXdu6jy8ry',
                     'n1Bq89KaJrcaXEMUEsDSyhKHfTGi8mkfRJ', 'mrqYnxFPcf6u5xkEfmA3dxQzjB7ZcPgtTq',
                     'mwrETLWFdvEfDwRa44JvXngxCZp59MFcC6']
-transaction_outputs = []
-for output_address in output_addresses:
-    transaction_outputs.append(Output(amount_per_address, address=output_address, network='testnet'))
+transaction_outputs = [
+    Output(amount_per_address, address=output_address, network='testnet')
+    for output_address in output_addresses
+]
 t = Transaction([transaction_input], transaction_outputs, network='testnet')
 t.sign(ki.private_byte)
 pprint(t.as_dict())
-print("Raw Signed Transaction %s" % binascii.hexlify(t.raw()))
-print("Verified %s" % t.verify())
+print(f"Raw Signed Transaction {binascii.hexlify(t.raw())}")
+print(f"Verified {t.verify()}")
 
 print("\n=== Create and sign Testnet Transaction with Multiple INPUTS using keys from "
       "Wallet class 'TestNetWallet' example"
@@ -80,14 +81,12 @@ transaction_inputs = [
 for ti in transaction_inputs:
     ki = Key(ti[2], network='testnet')
     t.add_input(prev_hash=ti[0], output_n=ti[1], keys=ki.public())
-icount = 0
-for ti in transaction_inputs:
+for icount, ti in enumerate(transaction_inputs):
     ki = Key(ti[2], network='testnet')
     t.sign(ki.private_byte, icount)
-    icount += 1
 pprint(t.as_dict())
-print("Raw Signed Transaction %s" % binascii.hexlify(t.raw()))
-print("Verified %s" % t.verify())
+print(f"Raw Signed Transaction {binascii.hexlify(t.raw())}")
+print(f"Verified {t.verify()}")
 
 
 #
@@ -108,7 +107,7 @@ t.sign(pk3.private_byte)
 t.sign(pk1.private_byte)
 print("Transaction:")
 pprint(t.as_dict())
-print("Verified %s" % t.verify())
+print(f"Verified {t.verify()}")
 
 #
 # Deserialize input and output transaction scripts

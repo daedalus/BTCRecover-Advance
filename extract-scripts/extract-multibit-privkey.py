@@ -34,17 +34,29 @@ with open(privkey_filename, "rb") as privkey_file:
     # we need the first 32 bytes after decoding, which translates to 44 before.
     base64_encoded = b"".join(privkey_file.read(50).split())  # join multiple lines into one
     if len(base64_encoded) < 44:
-        print(prog+": error: file is not a MultiBit private key file (too short)", file=sys.stderr)
+        print(
+            f"{prog}: error: file is not a MultiBit private key file (too short)",
+            file=sys.stderr,
+        )
         sys.exit(1)
     try: salt_privkey = base64.b64decode(base64_encoded[:44])
     except:
-        print(prog+": error: file is not a MultiBit private key file (not base64 encoded)", file=sys.stderr)
+        print(
+            f"{prog}: error: file is not a MultiBit private key file (not base64 encoded)",
+            file=sys.stderr,
+        )
         sys.exit(1)
     if not salt_privkey.startswith(b"Salted__"):
-        print(prog+": error: file is not a MultiBit private key file", file=sys.stderr)
+        print(
+            f"{prog}: error: file is not a MultiBit private key file",
+            file=sys.stderr,
+        )
         sys.exit(1)
     if len(salt_privkey) < 32:
-        print(prog+": error: file is not a MultiBit private key file (too short)", file=sys.stderr)
+        print(
+            f"{prog}: error: file is not a MultiBit private key file (too short)",
+            file=sys.stderr,
+        )
         sys.exit(1)
 
 print("\nWARNING: please read the important warning in the Usage for MultiBit\n"
